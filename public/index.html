@@ -14,7 +14,7 @@
   <style>
     :root {
       --bg-obsidian: #050811;
-      --panel-glass: rgba(12, 18, 32, 0.84);
+      --panel-glass: rgba(12, 18, 32, 0.86);
       --border-subtle: rgba(255, 255, 255, 0.08);
     }
     body {
@@ -265,10 +265,9 @@
        5. MAIN DASHBOARD & RESPONSIVE WORKSPACE
   ========================================== -->
   <div id="chatScreen" class="hidden h-full flex">
-    <!-- LEFT SIDEBAR (Full width on mobile when no chat is open, fixed 350px on desktop) -->
+    <!-- LEFT SIDEBAR -->
     <aside id="sidebarPanel" class="w-full md:w-[350px] lg:w-[370px] glass-panel border-y-0 border-l-0 flex flex-col shrink-0">
-      <!-- Top User Profile Header -->
-      <div class="p-4 border-b border-white/5">
+      <div class="p-4 border-b border-white/5 shrink-0">
         <div class="flex items-center justify-between gap-2">
           <div class="flex items-center gap-3 min-w-0 cursor-pointer" onclick="openProfileModal()">
             <div id="myAvatar" class="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-slate-950 font-extrabold text-sm shrink-0 shadow-md">
@@ -292,7 +291,7 @@
             <button id="lockNowBtn" onclick="lockAppScreen()" title="Lock Screen" class="hidden p-2 rounded-xl bg-white/5 hover:bg-white/10 text-amber-300 text-xs transition">
               🔒
             </button>
-            <button onclick="openProfileModal()" title="Settings, Vault & Account" class="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 text-xs transition">
+            <button onclick="openProfileModal()" title="Settings, Storage & Account" class="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 text-xs transition">
               ⚙
             </button>
             <button onclick="logout()" title="Logout" class="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-rose-500/20 hover:text-rose-300 text-slate-400 text-xs font-medium transition">
@@ -307,8 +306,7 @@
         </div>
       </div>
 
-      <!-- Quick Action Buttons -->
-      <div class="p-3 pb-2 grid grid-cols-2 gap-2">
+      <div class="p-3 pb-2 grid grid-cols-2 gap-2 shrink-0">
         <button onclick="openAddFriendModal('search')" class="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 text-xs font-bold py-2.5 px-3 rounded-xl shadow-md shadow-emerald-500/15 transition">
           + Add / QR Invite
         </button>
@@ -317,8 +315,7 @@
         </button>
       </div>
 
-      <!-- Sidebar Search & Filter Pills -->
-      <div class="px-3 pb-2.5 border-b border-white/5 space-y-2">
+      <div class="px-3 pb-2.5 border-b border-white/5 space-y-2 shrink-0">
         <input id="sidebarSearchInput" type="text" placeholder="Search friends or groups..." oninput="renderSidebarLists()" class="w-full bg-slate-950/75 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400 transition" />
         <div class="flex gap-1.5 text-[11px]">
           <button id="filterAllBtn" onclick="setSidebarFilter('all')" class="px-2.5 py-1 rounded-lg font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">All</button>
@@ -327,8 +324,7 @@
         </div>
       </div>
 
-      <!-- Scrollable Roster -->
-      <div class="flex-1 overflow-y-auto p-3 space-y-4">
+      <div class="flex-1 min-h-0 overflow-y-auto p-3 space-y-4">
         <div id="incomingSection" class="hidden">
           <div class="text-[10px] font-bold uppercase tracking-widest text-amber-400 px-1.5 mb-2 flex items-center justify-between">
             <span>Friend Requests</span>
@@ -363,52 +359,50 @@
       </div>
     </aside>
 
-    <!-- RIGHT CHAT CANVAS (Hidden on mobile until a chat is selected) -->
+    <!-- RIGHT CHAT CANVAS -->
     <main id="chatMainPanel" class="hidden md:flex flex-1 flex-col chat-pattern relative min-w-0">
-      <!-- Top Glass Header -->
       <header class="h-14 sm:h-16 shrink-0 glass-panel border-x-0 border-t-0 px-2.5 sm:px-5 flex items-center justify-between gap-1.5 sm:gap-2 z-10">
-        <div class="flex items-center gap-2.5 min-w-0">
-          <!-- Mobile Back Button -->
+        <div class="flex items-center gap-2 min-w-0">
           <button onclick="closeMobileChat()" class="md:hidden p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 text-xs font-bold shrink-0">
             ←
           </button>
-          <div id="activePeerAvatar" onclick="openChatInfoModal()" class="hidden w-9 h-9 rounded-xl bg-gradient-to-br from-sky-400 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shrink-0 cursor-pointer">
+          <div id="activePeerAvatar" onclick="openChatInfoModal()" class="hidden w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-sky-400 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shrink-0 cursor-pointer">
             ?
           </div>
           <div class="min-w-0 cursor-pointer" onclick="openChatInfoModal()">
-            <div class="flex items-center gap-2">
-              <h2 id="peerName" class="font-bold text-sm text-white truncate">Select a Friend or Group</h2>
-              <span id="typingBadge" class="hidden text-xs text-emerald-400 font-medium animate-pulse">typing...</span>
+            <div class="flex items-center gap-1.5">
+              <h2 id="peerName" class="font-bold text-xs sm:text-sm text-white truncate">Select a Friend or Group</h2>
+              <span id="typingBadge" class="hidden text-[11px] text-emerald-400 font-medium animate-pulse shrink-0">typing...</span>
             </div>
-            <p id="peerSubtitle" class="text-xs text-slate-400 truncate">End-to-End Encrypted (ECDH P-256 + AES-256-GCM)</p>
+            <p id="peerSubtitle" class="text-[11px] text-slate-400 truncate">End-to-End Encrypted (ECDH P-256 + AES-256-GCM)</p>
           </div>
         </div>
 
-        <div id="chatControls" class="hidden flex items-center gap-1.5 shrink-0">
-          <div id="callButtonsWrap" class="flex items-center gap-1.5">
-            <button onclick="startCall(false)" title="Encrypted Audio Call" class="p-2 rounded-xl bg-white/5 hover:bg-emerald-500/20 border border-white/10 text-emerald-400 text-xs transition">
+        <div id="chatControls" class="hidden flex items-center gap-1 sm:gap-1.5 shrink-0">
+          <div id="callButtonsWrap" class="flex items-center gap-1">
+            <button onclick="startCall(false)" title="Encrypted Audio Call" class="p-1.5 sm:p-2 rounded-xl bg-white/5 hover:bg-emerald-500/20 border border-white/10 text-emerald-400 text-xs transition">
               📞
             </button>
-            <button onclick="startCall(true)" title="Encrypted Video & Screen Call" class="p-2 rounded-xl bg-white/5 hover:bg-emerald-500/20 border border-white/10 text-emerald-400 text-xs transition">
+            <button onclick="startCall(true)" title="Encrypted Video & Screen Call" class="p-1.5 sm:p-2 rounded-xl bg-white/5 hover:bg-emerald-500/20 border border-white/10 text-emerald-400 text-xs transition">
               📹
             </button>
           </div>
 
-          <input id="chatSearchInput" type="text" placeholder="Search chat..." oninput="renderMessages()" class="hidden sm:block w-24 focus:w-36 transition-all bg-slate-950/70 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400" />
+          <input id="chatSearchInput" type="text" placeholder="Search..." oninput="renderMessages()" class="hidden lg:block w-28 focus:w-40 transition-all bg-slate-950/70 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400" />
 
-          <label title="Inspect Raw Encrypted Database Ciphertext" class="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer bg-slate-950/70 border border-white/10 px-2.5 py-1.5 rounded-xl hover:border-emerald-500/40 transition">
+          <label title="Inspect Raw Encrypted Database Ciphertext" class="flex items-center gap-1 text-xs text-slate-300 cursor-pointer bg-slate-950/70 border border-white/10 px-2 py-1.5 rounded-xl hover:border-emerald-500/40 transition">
             <input type="checkbox" id="xrayToggle" onchange="renderMessages()" class="accent-emerald-500" />
-            <span class="font-mono text-[11px]">X-Ray</span>
+            <span class="font-mono text-[10px] sm:text-[11px]">X-Ray</span>
           </label>
 
-          <button onclick="openChatInfoModal()" title="Chat Info, Safety Number & Options" class="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sky-300 text-xs font-bold transition">
+          <button onclick="openChatInfoModal()" title="Chat Info, Safety Number & Options" class="px-2 py-1.5 sm:p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sky-300 text-[11px] sm:text-xs font-bold transition">
             🛡️ Info
           </button>
         </div>
       </header>
 
-      <!-- Messages Feed / Helpful Welcome Dashboard -->
-      <div id="messagesBox" class="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-3">
+      <!-- Messages Feed -->
+      <div id="messagesBox" class="flex-1 min-h-0 overflow-y-auto p-3.5 sm:p-6 space-y-3">
         <div class="h-full flex items-center justify-center">
           <div class="max-w-lg w-full glass-panel rounded-3xl p-6 sm:p-8 shadow-2xl">
             <div class="flex items-center gap-3.5 mb-4">
@@ -421,7 +415,7 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-5 text-left">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-left">
               <button onclick="openAddFriendModal('search')" class="p-3.5 rounded-2xl bg-white/5 hover:bg-emerald-500/10 border border-white/10 hover:border-emerald-500/30 transition">
                 <div class="text-xs font-bold text-emerald-300 mb-0.5">+ Add Friend</div>
                 <div class="text-[11px] text-slate-400">@username, Mobile ya Email se request bhejein</div>
@@ -444,9 +438,9 @@
       </div>
 
       <!-- Active Privacy Modes & Reply Quote Strip -->
-      <div id="activeModesBar" class="hidden mx-3 sm:mx-4 mb-1.5 flex flex-wrap items-center gap-1.5"></div>
+      <div id="activeModesBar" class="hidden shrink-0 mx-3 sm:mx-4 mb-1 flex flex-wrap items-center gap-1.5"></div>
 
-      <div id="replyBanner" class="hidden mx-3 sm:mx-4 mb-1.5 px-4 py-2 glass-panel rounded-2xl flex items-center justify-between text-xs">
+      <div id="replyBanner" class="hidden shrink-0 mx-3 sm:mx-4 mb-1 px-3.5 py-2 glass-panel rounded-2xl flex items-center justify-between text-xs">
         <div class="truncate border-l-2 border-emerald-400 pl-3">
           <span class="text-emerald-400 font-bold" id="replyAuthor">Replying</span>
           <p class="text-slate-300 truncate" id="replyText"></p>
@@ -454,10 +448,10 @@
         <button onclick="cancelReply()" class="text-slate-400 hover:text-white p-1">✕</button>
       </div>
 
-      <!-- Clean Modern Composer Dock -->
+      <!-- Fixed Bottom Mobile-Safe Composer Dock -->
       <div id="composerBar" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom));" class="hidden shrink-0 p-2.5 sm:p-3.5 pt-1 relative z-20">
         <!-- Popover 1: Power Tools Menu (+) -->
-        <div id="composerToolsMenu" class="hidden absolute bottom-20 left-3 sm:left-4 w-72 glass-panel border-white/15 rounded-2xl p-2.5 shadow-2xl z-30 space-y-1">
+        <div id="composerToolsMenu" class="hidden absolute bottom-16 left-2.5 sm:left-4 w-72 glass-panel border-white/15 rounded-2xl p-2.5 shadow-2xl z-30 space-y-1">
           <label class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/10 cursor-pointer transition">
             <span class="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-sm">📎</span>
             <div>
@@ -507,7 +501,7 @@
         </div>
 
         <!-- Popover 2: Quick Emoji Picker -->
-        <div id="emojiPickerMenu" class="hidden absolute bottom-20 left-12 glass-panel border-white/15 rounded-2xl p-2.5 shadow-2xl z-30 grid grid-cols-6 gap-1.5 text-lg">
+        <div id="emojiPickerMenu" class="hidden absolute bottom-16 left-12 glass-panel border-white/15 rounded-2xl p-2.5 shadow-2xl z-30 grid grid-cols-6 gap-1.5 text-lg">
           <button onclick="insertEmoji('😀')" class="hover:bg-white/10 p-1.5 rounded-lg">😀</button>
           <button onclick="insertEmoji('😂')" class="hover:bg-white/10 p-1.5 rounded-lg">😂</button>
           <button onclick="insertEmoji('❤️')" class="hover:bg-white/10 p-1.5 rounded-lg">❤️</button>
@@ -532,13 +526,13 @@
             😊
           </button>
 
-          <input id="msgInput" type="text" placeholder="Message (End-to-End Encrypted)..." oninput="notifyTyping()" onkeydown="if(event.key==='Enter') sendText()" class="flex-1 min-w-0 bg-transparent px-2.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none" />
+          <input id="msgInput" type="text" placeholder="Type encrypted message..." oninput="notifyTyping()" onkeydown="if(event.key==='Enter') sendText()" class="flex-1 min-w-0 bg-transparent px-2 py-2 text-sm text-white placeholder-slate-500 focus:outline-none" />
 
-          <button id="voiceBtn" onclick="toggleVoiceRecording()" title="Record Encrypted Voice Note" class="px-3 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-200 flex items-center gap-1.5 shrink-0 transition">
+          <button id="voiceBtn" onclick="toggleVoiceRecording()" title="Record Encrypted Voice Note" class="px-2.5 sm:px-3 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-200 flex items-center gap-1.5 shrink-0 transition">
             🎤 <span id="voiceTimerLabel" class="hidden font-mono text-[11px]">0:00</span>
           </button>
 
-          <button onclick="sendText()" class="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 px-4 h-9 rounded-xl text-xs font-extrabold shadow-md shadow-emerald-500/20 shrink-0 transition active:scale-95">
+          <button onclick="sendText()" class="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 px-3.5 sm:px-4 h-9 rounded-xl text-xs font-extrabold shadow-md shadow-emerald-500/20 shrink-0 transition active:scale-95">
             Send ↑
           </button>
         </div>
@@ -561,14 +555,12 @@
       <p id="infoMeta" class="text-xs font-mono text-emerald-400 mt-0.5"></p>
       <p id="infoBio" class="text-xs text-slate-400 mt-1.5 mb-4"></p>
 
-      <!-- 60-Digit Safety Verification Box (For 1-to-1 friends) -->
       <div id="infoSafetySection" class="bg-slate-950/80 border border-sky-500/25 rounded-2xl p-4 mb-4">
         <div class="text-[11px] font-bold text-sky-300 mb-2">60-Digit End-to-End Safety Fingerprint</div>
         <div id="safetyColorGrid" class="grid grid-cols-8 gap-1 w-28 h-28 mx-auto p-2 bg-slate-900 border border-white/10 rounded-xl mb-3"></div>
         <div id="safetyDigitsBox" class="font-mono text-[11px] tracking-widest text-emerald-300 leading-relaxed"></div>
       </div>
 
-      <!-- Unfriend & Block Controls -->
       <div id="infoDangerButtons" class="grid grid-cols-2 gap-2.5">
         <button onclick="closeModal('chatInfoModal'); unfriendCurrent()" class="bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 font-bold py-2.5 rounded-xl text-xs">
           Unfriend User
@@ -581,7 +573,22 @@
   </div>
 
   <!-- ==========================================
-       7. HELPFUL SECURITY & FEATURE GUIDE MODAL
+       7. FORWARD ENCRYPTED MESSAGE MODAL
+  ========================================== -->
+  <div id="forwardModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
+    <div class="w-full max-w-md glass-panel border-emerald-500/30 rounded-3xl p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-base font-bold text-white">↪ Forward Encrypted Message</h3>
+        <button onclick="closeModal('forwardModal')" class="text-slate-400 hover:text-white text-sm">✕</button>
+      </div>
+      <div id="forwardPreviewBox" class="bg-slate-950/80 border border-white/10 rounded-2xl p-3 text-xs text-slate-300 mb-3 truncate"></div>
+      <p class="text-[11px] text-slate-400 mb-2">Dost ya Group chunein (Unki E2EE key se re-encrypt hokar jayega):</p>
+      <div id="forwardTargetsList" class="max-h-60 overflow-y-auto space-y-1.5"></div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       8. HELPFUL SECURITY & FEATURE GUIDE MODAL
   ========================================== -->
   <div id="helpModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto">
     <div class="w-full max-w-lg glass-panel rounded-3xl p-6 shadow-2xl my-auto">
@@ -591,16 +598,16 @@
       </div>
       <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
         <div class="bg-slate-950/75 border border-white/10 rounded-2xl p-3.5">
-          <div class="font-bold text-emerald-400 mb-1">1. Multi-Device Recovery PIN</div>
-          <p class="text-slate-400">Aapki Private Key aapke 6-digit Recovery PIN se encrypt hokar save hoti hai. Naye mobile ya laptop se login karte waqt wahi PIN daalne par purani saari chats decrypt ho jati hain.</p>
+          <div class="font-bold text-emerald-400 mb-1">1. Multi-Device Recovery PIN & Storage</div>
+          <p class="text-slate-400">Aapke accounts aur encrypted messages permanent Neon Cloud DB (512 MB free) me save hote hain, jabki aapki encryption keys aur login session phone ki localStorage (~10 KB) me safe rehte hain.</p>
         </div>
         <div class="bg-slate-950/75 border border-white/10 rounded-2xl p-3.5">
           <div class="font-bold text-purple-400 mb-1">2. Steganography Secret Image (+ → Stego)</div>
-          <p class="text-slate-400">Kisi normal photo ke pixels ke andar aapka AES-256 encrypted text chhup jata hai. Receiver photo par <b>Reveal Secret</b> dabakar andar ka message padh sakta hai.</p>
+          <p class="text-slate-400">Kisi normal photo ke pixels ke andar aapka AES-256 encrypted text chhup jata hai. Receiver photo par <b>Reveal</b> dabakar andar ka message padh sakta hai aur photo download bhi kar sakta hai.</p>
         </div>
         <div class="bg-slate-950/75 border border-white/10 rounded-2xl p-3.5">
-          <div class="font-bold text-indigo-400 mb-1">3. Sealed Sender & X-Ray Mode</div>
-          <p class="text-slate-400"><b>Sealed Sender ON</b> karne par server database me <code>sender_id = 0</code> save hota hai. Top header me <b>X-Ray</b> ON karke aap live database ciphertext check kar sakte hain.</p>
+          <div class="font-bold text-indigo-400 mb-1">3. Reply, Forward & Sealed Sender</div>
+          <p class="text-slate-400">Har message ke neeche <b>↩ Reply</b> aur <b>↪ Forward</b> buttons diye gaye hain. <b>Sealed Sender ON</b> karne par server database me <code>sender_id = 0</code> save hota hai.</p>
         </div>
         <div class="bg-slate-950/75 border border-white/10 rounded-2xl p-3.5">
           <div class="font-bold text-amber-400 mb-1">4. App Lock + Decoy PIN & .cipher Backup</div>
@@ -611,7 +618,7 @@
   </div>
 
   <!-- ==========================================
-       8. ADMINISTRATOR CONTROL PANEL MODAL
+       9. ADMINISTRATOR CONTROL PANEL MODAL
   ========================================== -->
   <div id="adminModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto">
     <div class="w-full max-w-4xl glass-panel border-amber-500/40 rounded-3xl p-5 sm:p-6 shadow-2xl my-auto max-h-[90vh] flex flex-col">
@@ -692,7 +699,7 @@
   </div>
 
   <!-- ==========================================
-       9. ADD FRIEND, STEGO, POLL, GROUP & PROFILE MODALS
+       10. ADD FRIEND, STEGO, POLL, GROUP & PROFILE MODALS
   ========================================== -->
   <!-- Add Friend & QR Invite Modal -->
   <div id="addFriendModal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 z-50">
@@ -798,11 +805,11 @@
     </div>
   </div>
 
-  <!-- Profile, Vault Backup, Sessions, App Lock & DELETE ACCOUNT Modal -->
+  <!-- Profile, Storage Meter, Vault Backup, Sessions, App Lock & DELETE ACCOUNT Modal -->
   <div id="profileModal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto">
     <div class="w-full max-w-lg glass-panel rounded-3xl p-6 shadow-2xl my-auto max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-base font-bold text-white">Account, .cipher Vault & Security</h3>
+        <h3 class="text-base font-bold text-white">Account, Storage & Security</h3>
         <button onclick="closeModal('profileModal')" class="text-slate-400 hover:text-white text-sm">✕</button>
       </div>
 
@@ -810,6 +817,18 @@
         <div><span class="text-slate-400">Username:</span> <span id="profUsername" class="text-emerald-400 font-mono"></span></div>
         <div><span class="text-slate-400">Phone:</span> <span id="profPhone" class="font-mono"></span></div>
         <div class="col-span-2"><span class="text-slate-400">Linked Email:</span> <span id="profEmail"></span></div>
+      </div>
+
+      <!-- Cloud & Device Storage Usage Meter -->
+      <div class="bg-slate-950/80 border border-white/10 rounded-2xl p-3 mb-3 text-xs">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="font-bold text-sky-400">💽 Cloud DB Storage (Neon PostgreSQL)</span>
+          <span id="storageUsageText" class="font-mono text-[11px] text-slate-300">0.00 MB / 512 MB</span>
+        </div>
+        <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+          <div id="storageUsageBar" style="width: 1%" class="h-full bg-gradient-to-r from-emerald-400 to-sky-500 transition-all"></div>
+        </div>
+        <p class="text-[10px] text-slate-400 mt-1.5">Encrypted chats & media Neon Cloud DB me save hote hain; encryption keys & session phone ki localStorage (~10 KB) me rehte hain.</p>
       </div>
 
       <div class="grid grid-cols-2 gap-2.5 mb-2.5">
@@ -981,9 +1000,11 @@
     let cachedOutgoing = [];
     let cachedBlocked = [];
     let cachedSessions = [];
+    let cachedStorageBytes = 0;
     let cachedAdminUsers = [];
     let cachedMessages = [];
     let decryptedTextMap = {};
+    let decryptedRawMap = {};
     let groupCryptoKeys = {};
 
     let replyTarget = null;
@@ -1038,7 +1059,7 @@
 
     function formatTimeLabel(tsStr) {
       if (!tsStr) return '';
-      const d = new Date(tsStr.endsWith('Z') ? tsStr : tsStr + 'Z');
+      const d = new Date(tsStr.endsWith('Z') || tsStr.includes('+') ? tsStr : tsStr + 'Z');
       if (isNaN(d.getTime())) return '';
       return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
@@ -1237,6 +1258,81 @@
         { name: 'AES-GCM', iv: base64ToUint8(ivB64) }, aesKey, base64ToUint8(ciphertextB64)
       );
       return new TextDecoder().decode(plainBuffer);
+    }
+
+    // ==========================================
+    // FORWARD ENCRYPTED MESSAGE
+    // ==========================================
+    function openForwardModal(msgId) {
+      const item = decryptedRawMap[msgId];
+      if (!item) return showToast('Is message ko forward nahi kiya ja sakta.', 'warning');
+
+      document.getElementById('forwardPreviewBox').textContent = decryptedTextMap[msgId] || 'Encrypted Media';
+      const listEl = document.getElementById('forwardTargetsList');
+      listEl.innerHTML = '';
+
+      const targets = [
+        ...cachedGroups.map(g => ({ type: 'group', data: g, label: `# ${g.name}`, sub: `${g.member_count} members • Group` })),
+        { type: 'user', data: { ...currentUser, isSelf: true }, label: `${currentUser.name} (Personal Vault)`, sub: `@${currentUser.username}` },
+        ...cachedFriends.map(f => ({ type: 'user', data: f, label: f.name, sub: `@${f.username} • ${f.phone}` }))
+      ];
+
+      targets.forEach(t => {
+        const btn = document.createElement('button');
+        btn.className = 'w-full text-left p-3 rounded-2xl bg-slate-950/75 hover:bg-emerald-500/15 border border-white/10 hover:border-emerald-500/40 flex items-center justify-between transition';
+        btn.innerHTML = `
+          <div>
+            <div class="text-xs font-bold text-white">${escapeHtml(t.label)}</div>
+            <div class="text-[11px] font-mono text-slate-400">${escapeHtml(t.sub)}</div>
+          </div>
+          <span class="text-xs font-bold text-emerald-400">Send ↪</span>
+        `;
+        btn.onclick = () => executeForwardMessage(t, item);
+        listEl.appendChild(btn);
+      });
+
+      document.getElementById('forwardModal').classList.remove('hidden');
+    }
+
+    async function executeForwardMessage(target, item) {
+      try {
+        let targetAesKey = null;
+        if (target.type === 'group') {
+          if (!groupCryptoKeys[target.data.id]) {
+            const wrappingKey = await deriveSharedAESKey(target.data.adder_public_key);
+            const rawGroupKeyB64 = await decryptWithAesKey(target.data.encrypted_group_key, target.data.key_iv, wrappingKey);
+            groupCryptoKeys[target.data.id] = await crypto.subtle.importKey(
+              'raw', base64ToUint8(rawGroupKeyB64), { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+            );
+          }
+          targetAesKey = groupCryptoKeys[target.data.id];
+        } else {
+          targetAesKey = await deriveSharedAESKey(target.data.public_key);
+        }
+
+        const encrypted = await encryptWithAesKey(item.data, targetAesKey);
+        await fetch('/api/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            senderId: currentUser.id,
+            receiverId: target.type === 'user' ? target.data.id : 0,
+            groupId: target.type === 'group' ? target.data.id : null,
+            msgType: item.msgType,
+            ciphertext: encrypted.ciphertext,
+            iv: encrypted.iv,
+            fileName: item.fileName
+          })
+        });
+
+        closeModal('forwardModal');
+        showToast(`Forwarded to ${target.label}!`, 'success');
+        if (activeChat && activeChat.type === target.type && activeChat.data.id === target.data.id) {
+          await loadMessages();
+        }
+      } catch (err) {
+        showToast('Forward failed: ' + err.message, 'error');
+      }
     }
 
     // ==========================================
@@ -1726,7 +1822,7 @@
     });
 
     // ==========================================
-    // AUTH FLOW
+    // AUTH FLOW & PERSISTENT LOGIN
     // ==========================================
     async function requestSignupOtp() {
       const name = document.getElementById('regName').value.trim();
@@ -1826,6 +1922,7 @@
         userId: currentUser.id,
         sessionToken: currentSessionToken
       }));
+
       const storageKey = `cipherchat_ecdh_${currentUser.email}`;
 
       if (generatedBundle) {
@@ -1907,7 +2004,7 @@
       document.getElementById('authScreen').classList.add('hidden');
       document.getElementById('chatScreen').classList.remove('hidden');
       updateProfileHeaderUI();
-      showToast(`Welcome back, ${currentUser.name}!`, 'success');
+      showToast(`Welcome, ${currentUser.name}!`, 'success');
 
       if (currentUser.is_admin) {
         document.getElementById('adminPanelBtn').classList.remove('hidden');
@@ -1951,7 +2048,7 @@
       av.className = `w-10 h-10 rounded-2xl bg-gradient-to-br ${getAvatarGradient(currentUser.username)} flex items-center justify-center text-slate-950 font-extrabold text-sm shrink-0 shadow-md`;
     }
 
-   async function logout() {
+    async function logout() {
       clearInterval(pollTimer);
       clearInterval(idleCheckTimer);
       const saved = JSON.parse(localStorage.getItem('cipherchat_active_session') || 'null');
@@ -1990,13 +2087,14 @@
         location.reload();
         return;
       }
-      const { friends, incoming, outgoing, groups, blocked, sessions, deletionRequest, isAdmin } = await res.json();
+      const { friends, incoming, outgoing, groups, blocked, sessions, deletionRequest, storageUsedBytes, isAdmin } = await res.json();
       cachedSessions = sessions || [];
       cachedFriends = friends || [];
       cachedGroups = groups || [];
       cachedIncoming = incoming || [];
       cachedOutgoing = outgoing || [];
       cachedBlocked = blocked || [];
+      cachedStorageBytes = Number(storageUsedBytes || 0);
 
       if (isAdmin) document.getElementById('adminPanelBtn').classList.remove('hidden');
 
@@ -2017,7 +2115,6 @@
 
       const query = (document.getElementById('sidebarSearchInput').value || '').trim().toLowerCase();
 
-      // Incoming Requests
       const incSec = document.getElementById('incomingSection');
       const incList = document.getElementById('incomingList');
       if (cachedIncoming.length > 0 && sidebarFilter === 'all') {
@@ -2037,7 +2134,6 @@
         incSec.classList.add('hidden');
       }
 
-      // Encrypted Groups
       const grpSec = document.getElementById('groupsSection');
       const grpList = document.getElementById('groupsList');
       const filteredGroups = cachedGroups.filter(g => !query || g.name.toLowerCase().includes(query));
@@ -2067,7 +2163,6 @@
         grpSec.classList.add('hidden');
       }
 
-      // Direct Friends + Personal Vault
       const directSec = document.getElementById('directSection');
       const fList = document.getElementById('friendsList');
       if (sidebarFilter === 'groups') {
@@ -2123,7 +2218,6 @@
         });
       }
 
-      // Outgoing Requests
       const outSec = document.getElementById('outgoingSection');
       const outList = document.getElementById('outgoingList');
       if (cachedOutgoing.length > 0 && sidebarFilter === 'all') {
@@ -2321,6 +2415,11 @@
       document.getElementById('profEmail').textContent = currentUser.email;
       document.getElementById('profNameInput').value = currentUser.name;
       document.getElementById('profBioInput').value = currentUser.bio || '';
+
+      const mbUsed = (cachedStorageBytes / (1024 * 1024)).toFixed(2);
+      const pctUsed = Math.min(100, Math.max(1, Math.round((cachedStorageBytes / (512 * 1024 * 1024)) * 100)));
+      document.getElementById('storageUsageText').textContent = `${mbUsed} MB / 512 MB`;
+      document.getElementById('storageUsageBar').style.width = `${pctUsed}%`;
 
       document.getElementById('acceptDeleteTermsCb').checked = false;
       document.getElementById('deleteReasonInput').value = '';
@@ -2665,7 +2764,7 @@
       const av = document.getElementById('activePeerAvatar');
       av.classList.remove('hidden');
       av.textContent = friend.isSelf ? '📌' : getInitials(friend.name);
-      av.className = `w-9 h-9 rounded-xl bg-gradient-to-br ${friend.isSelf ? 'from-amber-400 to-orange-500' : getAvatarGradient(friend.username)} flex items-center justify-center text-slate-950 font-extrabold text-xs shrink-0 cursor-pointer`;
+      av.className = `w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br ${friend.isSelf ? 'from-amber-400 to-orange-500' : getAvatarGradient(friend.username)} flex items-center justify-center text-slate-950 font-extrabold text-xs shrink-0 cursor-pointer`;
 
       document.getElementById('peerName').textContent = `${friend.name} (@${friend.username})`;
       document.getElementById('peerSubtitle').textContent = friend.isSelf
@@ -2691,7 +2790,7 @@
       const av = document.getElementById('activePeerAvatar');
       av.classList.remove('hidden');
       av.textContent = '#';
-      av.className = 'w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-400 to-purple-600 flex items-center justify-center text-white font-extrabold text-sm shrink-0 cursor-pointer';
+      av.className = 'w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-indigo-400 to-purple-600 flex items-center justify-center text-white font-extrabold text-sm shrink-0 cursor-pointer';
 
       document.getElementById('peerName').textContent = group.name;
       document.getElementById('peerSubtitle').textContent = `${group.member_count} Members • End-to-End Encrypted Group`;
@@ -2893,7 +2992,7 @@
         mediaRecorder.stop();
         clearInterval(voiceTimerInterval);
         timerLbl.classList.add('hidden');
-        btn.className = 'px-3 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-200 flex items-center gap-1.5 shrink-0 transition';
+        btn.className = 'px-2.5 sm:px-3 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-200 flex items-center gap-1.5 shrink-0 transition';
         return;
       }
 
@@ -2921,7 +3020,7 @@
           const s = String(voiceSeconds % 60).padStart(2, '0');
           timerLbl.textContent = `${m}:${s}`;
         }, 1000);
-        btn.className = 'px-3 h-9 rounded-xl bg-rose-600 hover:bg-rose-500 text-xs font-bold text-white flex items-center gap-1.5 animate-pulse shrink-0 transition';
+        btn.className = 'px-2.5 sm:px-3 h-9 rounded-xl bg-rose-600 hover:bg-rose-500 text-xs font-bold text-white flex items-center gap-1.5 animate-pulse shrink-0 transition';
       } catch {
         showToast('Microphone permission denied ya HTTPS required hai.', 'error');
       }
@@ -3068,10 +3167,22 @@
               } catch {}
             }
 
+            decryptedRawMap[m.id] = { data: decrypted, msgType: m.msg_type, fileName: m.file_name || null };
+
             if (m.msg_type === 'image' && decrypted.startsWith('data:image')) {
-              decryptedContent = m.file_name || 'Photo';
-              renderHtmlOrNode = `<img src="${decrypted}" class="rounded-xl max-h-64 object-cover shadow-md" />`;
+              const safeImgName = escapeHtml(m.file_name || `CipherChat_Photo_${m.id}.png`);
+              decryptedContent = safeImgName;
+              renderHtmlOrNode = `
+                <div class="space-y-1.5">
+                  <img src="${decrypted}" class="rounded-xl max-h-64 object-cover shadow-md" />
+                  <div class="flex justify-end">
+                    <a href="${decrypted}" download="${safeImgName}" class="inline-flex items-center gap-1 bg-black/30 hover:bg-black/50 px-2.5 py-1 rounded-lg text-[11px] font-bold transition">
+                      ⬇ Download Photo
+                    </a>
+                  </div>
+                </div>`;
             } else if (m.msg_type === 'stego' && decrypted.startsWith('data:image')) {
+              const safeStegoName = escapeHtml(m.file_name || `CipherChat_Stego_${m.id}.png`);
               decryptedContent = 'Steganography Secret Image';
               const secretBoxId = `stego_secret_${m.id}`;
               const container = document.createElement('div');
@@ -3079,8 +3190,11 @@
               container.innerHTML = `
                 <img src="${decrypted}" class="rounded-xl max-h-64 object-cover shadow-md" />
                 <div class="flex items-center justify-between gap-2 bg-black/25 px-3 py-1.5 rounded-xl text-[11px]">
-                  <span>🕵️ Stego Cover Photo</span>
-                  <button id="btn_${secretBoxId}" class="font-bold underline hover:opacity-80">🔍 Reveal Secret</button>
+                  <span>🕵️ Stego Photo</span>
+                  <div class="flex items-center gap-2.5">
+                    <button id="btn_${secretBoxId}" class="font-bold underline hover:opacity-80">🔍 Reveal</button>
+                    <a href="${decrypted}" download="${safeStegoName}" class="font-bold underline hover:opacity-80">⬇ Save</a>
+                  </div>
                 </div>
                 <div id="${secretBoxId}" class="hidden text-xs bg-slate-950/90 border border-purple-400/40 px-3 py-2 rounded-xl"></div>
               `;
@@ -3120,11 +3234,24 @@
               });
               renderHtmlOrNode = pollBox;
             } else if (m.msg_type === 'video' && decrypted.startsWith('data:video')) {
-              decryptedContent = m.file_name || 'Video';
-              renderHtmlOrNode = `<video src="${decrypted}" controls class="rounded-xl max-h-64 shadow-md"></video>`;
+              const safeVidName = escapeHtml(m.file_name || `CipherChat_Video_${m.id}.mp4`);
+              decryptedContent = safeVidName;
+              renderHtmlOrNode = `
+                <div class="space-y-1.5">
+                  <video src="${decrypted}" controls class="rounded-xl max-h-64 shadow-md"></video>
+                  <div class="flex justify-end">
+                    <a href="${decrypted}" download="${safeVidName}" class="inline-flex items-center gap-1 bg-black/30 hover:bg-black/50 px-2.5 py-1 rounded-lg text-[11px] font-bold transition">
+                      ⬇ Download Video
+                    </a>
+                  </div>
+                </div>`;
             } else if (m.msg_type === 'audio' && decrypted.startsWith('data:audio')) {
               decryptedContent = 'Voice Note';
-              renderHtmlOrNode = `<audio src="${decrypted}" controls class="h-9 max-w-[240px]"></audio>`;
+              renderHtmlOrNode = `
+                <div class="flex items-center gap-2">
+                  <audio src="${decrypted}" controls class="h-9 max-w-[200px] sm:max-w-[240px]"></audio>
+                  <a href="${decrypted}" download="VoiceNote_${m.id}.webm" class="bg-black/25 hover:bg-black/40 px-2.5 py-1.5 rounded-lg text-[11px] font-bold shrink-0">⬇</a>
+                </div>`;
             } else if (m.msg_type === 'file' && decrypted.startsWith('data:')) {
               const safeName = escapeHtml(m.file_name || 'Encrypted_Document');
               const kbSize = Math.max(1, Math.round((decrypted.length * 3) / 4 / 1024));
@@ -3191,7 +3318,7 @@
         metaRow.className = `flex items-center justify-end gap-1.5 mt-1 text-[10px] font-mono ${isMine ? 'text-slate-950/75 font-semibold' : 'text-slate-400'}`;
         if (m.is_edited) metaRow.innerHTML += `<span>(edited)</span>`;
         if (m.expires_at) {
-          const secsLeft = Math.max(1, Math.round((m.expires_at - Date.now()) / 1000));
+          const secsLeft = Math.max(1, Math.round((Number(m.expires_at) - Date.now()) / 1000));
           metaRow.innerHTML += `<span>⏱ ${secsLeft}s</span>`;
         }
         const timeStr = formatTimeLabel(m.created_at);
@@ -3222,15 +3349,13 @@
 
         if (!m.is_deleted) {
           const actions = document.createElement('div');
-          actions.className = 'opacity-0 group-hover:opacity-100 transition flex items-center gap-1.5 mt-1 px-2.5 py-0.5 rounded-full glass-panel text-[11px] text-slate-300';
+          actions.className = 'opacity-90 sm:opacity-0 sm:group-hover:opacity-100 transition flex flex-wrap items-center gap-1.5 mt-1 px-2.5 py-1 rounded-full glass-panel text-[11px] text-slate-300';
           actions.innerHTML = `
-            <button onclick="setReply(${m.id}, '${escapeHtml(effectiveSenderName)}')" class="hover:text-emerald-400 font-medium px-1">Reply</button>
-            ${m.msg_type === 'text' ? `<button onclick="navigator.clipboard.writeText(decryptedTextMap[${m.id}] || ''); showToast('Copied!', 'info')" class="hover:text-sky-400 font-medium px-1">Copy</button>` : ''}
+            <button onclick="setReply(${m.id}, '${escapeHtml(effectiveSenderName)}')" class="hover:text-emerald-400 font-semibold px-1">↩ Reply</button>
+            ${!m.is_view_once && m.msg_type !== 'poll' ? `<button onclick="openForwardModal(${m.id})" class="hover:text-sky-400 font-semibold px-1">↪ Forward</button>` : ''}
             ${isMine && m.msg_type === 'text' ? `<button onclick="editTextMessage(${m.id}, ${Boolean(m.is_sealed)})" class="hover:text-amber-300 font-medium px-1">Edit</button>` : ''}
             <button onclick="reactToMessage(${m.id}, '❤️')" class="hover:scale-125 transition">❤️</button>
-            <button onclick="reactToMessage(${m.id}, '😂')" class="hover:scale-125 transition">😂</button>
             <button onclick="reactToMessage(${m.id}, '👍')" class="hover:scale-125 transition">👍</button>
-            <button onclick="reactToMessage(${m.id}, '🔥')" class="hover:scale-125 transition">🔥</button>
             ${isMine ? `<button onclick="deleteMessage(${m.id})" class="text-rose-400 hover:underline px-1 font-medium">Delete</button>` : ''}
           `;
           wrap.appendChild(actions);
@@ -3295,9 +3420,6 @@
         // Offline hone par session safe rakhein taaki net aate hi khul jaye
       }
     })();
-    
   </script>
 </body>
-
 </html>
-
