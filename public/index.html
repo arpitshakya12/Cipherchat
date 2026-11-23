@@ -1822,6 +1822,10 @@
 
       currentUser = data.user;
       currentSessionToken = data.sessionToken;
+      localStorage.setItem('cipherchat_active_session', JSON.stringify({
+        userId: currentUser.id,
+        sessionToken: currentSessionToken
+      }));
       const storageKey = `cipherchat_ecdh_${currentUser.email}`;
 
       if (generatedBundle) {
@@ -1947,9 +1951,18 @@
       av.className = `w-10 h-10 rounded-2xl bg-gradient-to-br ${getAvatarGradient(currentUser.username)} flex items-center justify-center text-slate-950 font-extrabold text-sm shrink-0 shadow-md`;
     }
 
-    function logout() {
+   async function logout() {
       clearInterval(pollTimer);
       clearInterval(idleCheckTimer);
+      const saved = JSON.parse(localStorage.getItem('cipherchat_active_session') || 'null');
+      localStorage.removeItem('cipherchat_active_session');
+      if (saved) {
+        await fetch('/api/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(saved)
+        }).catch(() => {});
+      }
       location.reload();
     }
 
@@ -1971,6 +1984,7 @@
       const res = await fetch(`/api/dashboard?userId=${currentUser.id}&sessionToken=${encodeURIComponent(currentSessionToken)}`);
       if (res.status === 401) {
         const errData = await res.json().catch(() => ({}));
+        localStorage.removeItem('cipherchat_active_session');
         clearInterval(pollTimer);
         alert(errData.error || 'Aapka session samapt ho gaya hai.');
         location.reload();
@@ -3227,6 +3241,62 @@
 
       if (prevScrollBottom) box.scrollTop = box.scrollHeight;
     }
+
+    // ==========================================
+    // AUTO-RESTORE LOGIN ON APP REOPEN / REFRESH
+    // ==========================================
+    (async function restorePersistentSession() {
+      const rawSession = localStorage.getItem('cipherchat_active_session');
+      if (!rawSession) return;
+
+      let parsedSession = null;
+      try { parsedSession = JSON.parse(rawSession); } catch {}
+      if (!parsedSession?.userId || !parsedSession?.sessionToken) {
+        localStorage.removeItem('cipherchat_active_session');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/session/restore', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(parsedSession)
+        });
+        if (!res.ok) {
+          localStorage.removeItem('cipherchat_active_session');
+          return;
+        }
+
+        const data = await res.json();
+        currentUser = data.user;
+        currentSessionToken = data.sessionToken;
+
+        const savedLocalKeys = localStorage.getItem(`cipherchat_ecdh_${currentUser.email}`);
+        if (savedLocalKeys) {
+          const parsedKeys = JSON.parse(savedLocalKeys);
+          if (JSON.stringify(parsedKeys.publicJwk) === currentUser.public_key) {
+            myPrivateKey = await crypto.subtle.importKey(
+              'jwk', parsedKeys.privateJwk, { name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveKey']
+            );
+            await enterDashboard();
+            const lockCfg = getAppLockConfig();
+            if (lockCfg?.realPin) lockAppScreen();
+            return;
+          }
+        }
+
+        if (currentUser.encrypted_priv_key && currentUser.pin_salt && currentUser.pin_iv) {
+          document.getElementById('pinUnlockModal').classList.remove('hidden');
+          document.getElementById('unlockPinInput').focus();
+        } else {
+          await skipPinAndGenerateNew();
+        }
+      } catch {
+        // Offline hone par session safe rakhein taaki net aate hi khul jaye
+      }
+    })();
+    
   </script>
 </body>
+
 </html>
