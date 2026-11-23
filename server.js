@@ -4,180 +4,302 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const tls = require('node:tls');
 const zlib = require('node:zlib');
-const { DatabaseSync } = require('node:sqlite');
 
 // ==========================================
-// 1. GMAIL & ADMINISTRATOR CONFIGURATION
+// 1. GMAIL, BREVO, DATABASE & ADMIN CONFIG
 // ==========================================
 const SENDER_EMAIL = process.env.SENDER_EMAIL || '';
 const SENDER_APP_PASSWORD = process.env.SENDER_APP_PASSWORD || '';
 const BREVO_API_KEY = process.env.BREVO_API_KEY || '';
+const DATABASE_URL = process.env.DATABASE_URL || '';
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
 const PORT = process.env.PORT || 3000;
 
 // ==========================================
-// 2. SQLITE DATABASE & SAFE SCHEMA MIGRATION
+// 2. UNIFIED DATABASE LAYER (NEON POSTGRES + LOCAL SQLITE)
 // ==========================================
-const db = new DatabaseSync(path.join(__dirname, 'cipherchat.db'));
-db.exec('PRAGMA journal_mode = WAL;');
+let pgPool = null;
+let sqliteDb = null;
 
-const cols = db.prepare('PRAGMA table_info(users)').all();
-if (cols.length > 0 && !cols.some((c) => c.name === 'username')) {
-  db.exec(`
-    DROP TABLE IF EXISTS messages;
-    DROP TABLE IF EXISTS friend_requests;
-    DROP TABLE IF EXISTS otps;
-    DROP TABLE IF EXISTS users;
-  `);
+function toPgSql(sql) {
+  let i = 0;
+  return sql.replace(/\?/g, () => `$${++i}`);
 }
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    username TEXT UNIQUE NOT NULL,
-    phone TEXT UNIQUE NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    public_key TEXT,
-    encrypted_priv_key TEXT DEFAULT '',
-    pin_salt TEXT DEFAULT '',
-    pin_iv TEXT DEFAULT '',
-    bio TEXT DEFAULT 'Hey there! Using CipherChat E2EE.',
-    last_seen INTEGER DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+async function dbGet(sql, params = []) {
+  if (pgPool) {
+    const res = await pgPool.query(toPgSql(sql), params);
+    return res.rows[0] || null;
+  }
+  return sqliteDb.prepare(sql).get(...params) || null;
+}
 
-  CREATE TABLE IF NOT EXISTS sessions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    token TEXT UNIQUE NOT NULL,
-    device_name TEXT NOT NULL,
-    last_active INTEGER NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+async function dbAll(sql, params = []) {
+  if (pgPool) {
+    const res = await pgPool.query(toPgSql(sql), params);
+    return res.rows;
+  }
+  return sqliteDb.prepare(sql).all(...params);
+}
 
-  CREATE TABLE IF NOT EXISTS otps (
-    email TEXT PRIMARY KEY,
-    otp TEXT NOT NULL,
-    purpose TEXT NOT NULL,
-    pending_data TEXT,
-    expires_at INTEGER NOT NULL
-  );
+async function dbRun(sql, params = [], returnId = false) {
+  if (pgPool) {
+    const pgSql = returnId ? `${toPgSql(sql)} RETURNING id` : toPgSql(sql);
+    const res = await pgPool.query(pgSql, params);
+    return { lastInsertRowid: returnId ? Number(res.rows[0]?.id || 0) : 0 };
+  }
+  const info = sqliteDb.prepare(sql).run(...params);
+  return { lastInsertRowid: Number(info.lastInsertRowid || 0) };
+}
 
-  CREATE TABLE IF NOT EXISTS friend_requests (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    sender_id INTEGER NOT NULL,
-    receiver_id INTEGER NOT NULL,
-    status TEXT NOT NULL DEFAULT 'pending',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(sender_id, receiver_id)
-  );
+async function initDatabase() {
+  if (DATABASE_URL) {
+    const { Pool } = require('pg');
+    pgPool = new Pool({
+      connectionString: DATABASE_URL,
+      ssl: { rejectUnauthorized: false }
+    });
 
-  CREATE TABLE IF NOT EXISTS invite_tokens (
-    token TEXT PRIMARY KEY,
-    creator_id INTEGER NOT NULL,
-    expires_at INTEGER NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+    await pgPool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        username TEXT UNIQUE NOT NULL,
+        phone TEXT UNIQUE NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        public_key TEXT,
+        encrypted_priv_key TEXT DEFAULT '',
+        pin_salt TEXT DEFAULT '',
+        pin_iv TEXT DEFAULT '',
+        bio TEXT DEFAULT 'Hey there! Using CipherChat E2EE.',
+        last_seen BIGINT DEFAULT 0,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
 
-  CREATE TABLE IF NOT EXISTS blocks (
-    blocker_id INTEGER NOT NULL,
-    blocked_id INTEGER NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (blocker_id, blocked_id)
-  );
+      CREATE TABLE IF NOT EXISTS sessions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        token TEXT UNIQUE NOT NULL,
+        device_name TEXT NOT NULL,
+        last_active BIGINT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
 
-  CREATE TABLE IF NOT EXISTS groups (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    created_by INTEGER NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+      CREATE TABLE IF NOT EXISTS otps (
+        email TEXT PRIMARY KEY,
+        otp TEXT NOT NULL,
+        purpose TEXT NOT NULL,
+        pending_data TEXT,
+        expires_at BIGINT NOT NULL
+      );
 
-  CREATE TABLE IF NOT EXISTS group_members (
-    group_id INTEGER NOT NULL,
-    user_id INTEGER NOT NULL,
-    encrypted_group_key TEXT NOT NULL,
-    key_iv TEXT NOT NULL,
-    added_by INTEGER NOT NULL,
-    PRIMARY KEY (group_id, user_id)
-  );
+      CREATE TABLE IF NOT EXISTS friend_requests (
+        id SERIAL PRIMARY KEY,
+        sender_id INTEGER NOT NULL,
+        receiver_id INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(sender_id, receiver_id)
+      );
 
-  CREATE TABLE IF NOT EXISTS messages (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    sender_id INTEGER NOT NULL,
-    receiver_id INTEGER NOT NULL,
-    group_id INTEGER DEFAULT NULL,
-    msg_type TEXT NOT NULL,
-    ciphertext TEXT NOT NULL,
-    iv TEXT NOT NULL,
-    file_name TEXT,
-    reply_to_id INTEGER DEFAULT NULL,
-    is_view_once INTEGER DEFAULT 0,
-    is_sealed INTEGER DEFAULT 0,
-    is_edited INTEGER DEFAULT 0,
-    poll_votes TEXT DEFAULT '{}',
-    expires_at INTEGER DEFAULT NULL,
-    is_read INTEGER DEFAULT 0,
-    reactions TEXT DEFAULT '{}',
-    is_deleted INTEGER DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+      CREATE TABLE IF NOT EXISTS invite_tokens (
+        token TEXT PRIMARY KEY,
+        creator_id INTEGER NOT NULL,
+        expires_at BIGINT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
 
-  CREATE TABLE IF NOT EXISTS deletion_requests (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER UNIQUE NOT NULL,
-    reason TEXT DEFAULT '',
-    accepted_terms INTEGER NOT NULL DEFAULT 1,
-    terms_accepted_at TEXT NOT NULL,
-    device_info TEXT DEFAULT '',
-    status TEXT NOT NULL DEFAULT 'pending',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+      CREATE TABLE IF NOT EXISTS blocks (
+        blocker_id INTEGER NOT NULL,
+        blocked_id INTEGER NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        PRIMARY KEY (blocker_id, blocked_id)
+      );
 
-  CREATE TABLE IF NOT EXISTS deletion_audit_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_name TEXT NOT NULL,
-    username TEXT NOT NULL,
-    phone TEXT NOT NULL,
-    email TEXT NOT NULL,
-    reason TEXT DEFAULT '',
-    terms_accepted_at TEXT NOT NULL,
-    approved_by TEXT NOT NULL,
-    deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-`);
+      CREATE TABLE IF NOT EXISTS groups (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        created_by INTEGER NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
 
-const safeAlters = [
-  "ALTER TABLE users ADD COLUMN encrypted_priv_key TEXT DEFAULT ''",
-  "ALTER TABLE users ADD COLUMN pin_salt TEXT DEFAULT ''",
-  "ALTER TABLE users ADD COLUMN pin_iv TEXT DEFAULT ''",
-  "ALTER TABLE users ADD COLUMN bio TEXT DEFAULT 'Hey there! Using CipherChat E2EE.'",
-  "ALTER TABLE users ADD COLUMN last_seen INTEGER DEFAULT 0",
-  "ALTER TABLE messages ADD COLUMN group_id INTEGER DEFAULT NULL",
-  "ALTER TABLE messages ADD COLUMN reply_to_id INTEGER DEFAULT NULL",
-  "ALTER TABLE messages ADD COLUMN is_view_once INTEGER DEFAULT 0",
-  "ALTER TABLE messages ADD COLUMN is_sealed INTEGER DEFAULT 0",
-  "ALTER TABLE messages ADD COLUMN is_edited INTEGER DEFAULT 0",
-  "ALTER TABLE messages ADD COLUMN poll_votes TEXT DEFAULT '{}'",
-  "ALTER TABLE messages ADD COLUMN expires_at INTEGER DEFAULT NULL",
-  "ALTER TABLE messages ADD COLUMN is_read INTEGER DEFAULT 0",
-  "ALTER TABLE messages ADD COLUMN reactions TEXT DEFAULT '{}'",
-  "ALTER TABLE messages ADD COLUMN is_deleted INTEGER DEFAULT 0"
-];
-for (const sql of safeAlters) {
-  try { db.exec(sql); } catch {}
+      CREATE TABLE IF NOT EXISTS group_members (
+        group_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        encrypted_group_key TEXT NOT NULL,
+        key_iv TEXT NOT NULL,
+        added_by INTEGER NOT NULL,
+        PRIMARY KEY (group_id, user_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS messages (
+        id SERIAL PRIMARY KEY,
+        sender_id INTEGER NOT NULL,
+        receiver_id INTEGER NOT NULL,
+        group_id INTEGER DEFAULT NULL,
+        msg_type TEXT NOT NULL,
+        ciphertext TEXT NOT NULL,
+        iv TEXT NOT NULL,
+        file_name TEXT,
+        reply_to_id INTEGER DEFAULT NULL,
+        is_view_once INTEGER DEFAULT 0,
+        is_sealed INTEGER DEFAULT 0,
+        is_edited INTEGER DEFAULT 0,
+        poll_votes TEXT DEFAULT '{}',
+        expires_at BIGINT DEFAULT NULL,
+        is_read INTEGER DEFAULT 0,
+        reactions TEXT DEFAULT '{}',
+        is_deleted INTEGER DEFAULT 0,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS deletion_requests (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER UNIQUE NOT NULL,
+        reason TEXT DEFAULT '',
+        accepted_terms INTEGER NOT NULL DEFAULT 1,
+        terms_accepted_at TEXT NOT NULL,
+        device_info TEXT DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS deletion_audit_logs (
+        id SERIAL PRIMARY KEY,
+        user_name TEXT NOT NULL,
+        username TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        email TEXT NOT NULL,
+        reason TEXT DEFAULT '',
+        terms_accepted_at TEXT NOT NULL,
+        approved_by TEXT NOT NULL,
+        deleted_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+    console.log('Connected to Permanent Cloud PostgreSQL Database (Neon).');
+  } else {
+    const { DatabaseSync } = require('node:sqlite');
+    sqliteDb = new DatabaseSync(path.join(__dirname, 'cipherchat.db'));
+    sqliteDb.exec('PRAGMA journal_mode = WAL;');
+    sqliteDb.exec(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        username TEXT UNIQUE NOT NULL,
+        phone TEXT UNIQUE NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        public_key TEXT,
+        encrypted_priv_key TEXT DEFAULT '',
+        pin_salt TEXT DEFAULT '',
+        pin_iv TEXT DEFAULT '',
+        bio TEXT DEFAULT 'Hey there! Using CipherChat E2EE.',
+        last_seen INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        token TEXT UNIQUE NOT NULL,
+        device_name TEXT NOT NULL,
+        last_active INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS otps (
+        email TEXT PRIMARY KEY,
+        otp TEXT NOT NULL,
+        purpose TEXT NOT NULL,
+        pending_data TEXT,
+        expires_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS friend_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sender_id INTEGER NOT NULL,
+        receiver_id INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(sender_id, receiver_id)
+      );
+      CREATE TABLE IF NOT EXISTS invite_tokens (
+        token TEXT PRIMARY KEY,
+        creator_id INTEGER NOT NULL,
+        expires_at INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS blocks (
+        blocker_id INTEGER NOT NULL,
+        blocked_id INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (blocker_id, blocked_id)
+      );
+      CREATE TABLE IF NOT EXISTS groups (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        created_by INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS group_members (
+        group_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        encrypted_group_key TEXT NOT NULL,
+        key_iv TEXT NOT NULL,
+        added_by INTEGER NOT NULL,
+        PRIMARY KEY (group_id, user_id)
+      );
+      CREATE TABLE IF NOT EXISTS messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sender_id INTEGER NOT NULL,
+        receiver_id INTEGER NOT NULL,
+        group_id INTEGER DEFAULT NULL,
+        msg_type TEXT NOT NULL,
+        ciphertext TEXT NOT NULL,
+        iv TEXT NOT NULL,
+        file_name TEXT,
+        reply_to_id INTEGER DEFAULT NULL,
+        is_view_once INTEGER DEFAULT 0,
+        is_sealed INTEGER DEFAULT 0,
+        is_edited INTEGER DEFAULT 0,
+        poll_votes TEXT DEFAULT '{}',
+        expires_at INTEGER DEFAULT NULL,
+        is_read INTEGER DEFAULT 0,
+        reactions TEXT DEFAULT '{}',
+        is_deleted INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS deletion_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER UNIQUE NOT NULL,
+        reason TEXT DEFAULT '',
+        accepted_terms INTEGER NOT NULL DEFAULT 1,
+        terms_accepted_at TEXT NOT NULL,
+        device_info TEXT DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS deletion_audit_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_name TEXT NOT NULL,
+        username TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        email TEXT NOT NULL,
+        reason TEXT DEFAULT '',
+        terms_accepted_at TEXT NOT NULL,
+        approved_by TEXT NOT NULL,
+        deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Connected to Local SQLite Database (cipherchat.db).');
+  }
 }
 
 const typingStatus = new Map();
 const callSignals = new Map();
 let signalSeq = 1;
 
-setInterval(() => {
+setInterval(async () => {
   const now = Date.now();
   try {
-    db.prepare('DELETE FROM messages WHERE expires_at IS NOT NULL AND expires_at <= ?').run(now);
-    db.prepare('DELETE FROM invite_tokens WHERE expires_at <= ?').run(now);
+    await dbRun('DELETE FROM messages WHERE expires_at IS NOT NULL AND expires_at <= ?', [now]);
+    await dbRun('DELETE FROM invite_tokens WHERE expires_at <= ?', [now]);
   } catch {}
   for (const [uid, queue] of callSignals.entries()) {
     const fresh = queue.filter((s) => now - s.ts < 60000);
@@ -187,20 +309,20 @@ setInterval(() => {
 }, 5000);
 
 // ==========================================
-// 3. HELPERS (ADMIN CHECK, DEVICE, PHONE, SMTP)
+// 3. HELPERS (ADMIN CHECK, DEVICE, PHONE, EMAIL)
 // ==========================================
 function isAdminUser(user) {
   return Boolean(user && user.email && user.email.toLowerCase() === ADMIN_EMAIL);
 }
 
-function permanentlyDeleteUserAccount(targetUserId, reason, termsAcceptedAt, approvedByEmail) {
-  const target = db.prepare('SELECT id, name, username, phone, email FROM users WHERE id = ?').get(targetUserId);
+async function permanentlyDeleteUserAccount(targetUserId, reason, termsAcceptedAt, approvedByEmail) {
+  const target = await dbGet('SELECT id, name, username, phone, email FROM users WHERE id = ?', [targetUserId]);
   if (!target) return false;
 
-  db.prepare(`
+  await dbRun(`
     INSERT INTO deletion_audit_logs (user_name, username, phone, email, reason, terms_accepted_at, approved_by)
     VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(
+  `, [
     target.name,
     target.username,
     target.phone,
@@ -208,16 +330,16 @@ function permanentlyDeleteUserAccount(targetUserId, reason, termsAcceptedAt, app
     reason || 'User requested deletion',
     termsAcceptedAt || new Date().toISOString(),
     approvedByEmail
-  );
+  ]);
 
-  db.prepare('DELETE FROM sessions WHERE user_id = ?').run(targetUserId);
-  db.prepare('DELETE FROM friend_requests WHERE sender_id = ? OR receiver_id = ?').run(targetUserId, targetUserId);
-  db.prepare('DELETE FROM blocks WHERE blocker_id = ? OR blocked_id = ?').run(targetUserId, targetUserId);
-  db.prepare('DELETE FROM invite_tokens WHERE creator_id = ?').run(targetUserId);
-  db.prepare('DELETE FROM group_members WHERE user_id = ?').run(targetUserId);
-  db.prepare('DELETE FROM messages WHERE sender_id = ? OR receiver_id = ?').run(targetUserId, targetUserId);
-  db.prepare('DELETE FROM deletion_requests WHERE user_id = ?').run(targetUserId);
-  db.prepare('DELETE FROM users WHERE id = ?').run(targetUserId);
+  await dbRun('DELETE FROM sessions WHERE user_id = ?', [targetUserId]);
+  await dbRun('DELETE FROM friend_requests WHERE sender_id = ? OR receiver_id = ?', [targetUserId, targetUserId]);
+  await dbRun('DELETE FROM blocks WHERE blocker_id = ? OR blocked_id = ?', [targetUserId, targetUserId]);
+  await dbRun('DELETE FROM invite_tokens WHERE creator_id = ?', [targetUserId]);
+  await dbRun('DELETE FROM group_members WHERE user_id = ?', [targetUserId]);
+  await dbRun('DELETE FROM messages WHERE sender_id = ? OR receiver_id = ?', [targetUserId, targetUserId]);
+  await dbRun('DELETE FROM deletion_requests WHERE user_id = ?', [targetUserId]);
+  await dbRun('DELETE FROM users WHERE id = ?', [targetUserId]);
   return true;
 }
 
@@ -253,27 +375,27 @@ function maskEmail(email) {
   return `${user.slice(0, 2)}***@${domain}`;
 }
 
-function isBlockedBetween(u1, u2) {
-  const row = db.prepare(`
+async function isBlockedBetween(u1, u2) {
+  const row = await dbGet(`
     SELECT 1 FROM blocks
     WHERE (blocker_id = ? AND blocked_id = ?) OR (blocker_id = ? AND blocked_id = ?)
-  `).get(u1, u2, u2, u1);
+  `, [u1, u2, u2, u1]);
   return Boolean(row);
 }
 
-function areFriends(id1, id2) {
+async function areFriends(id1, id2) {
   if (Number(id1) === Number(id2)) return true;
-  if (isBlockedBetween(id1, id2)) return false;
-  const row = db.prepare(`
+  if (await isBlockedBetween(id1, id2)) return false;
+  const row = await dbGet(`
     SELECT id FROM friend_requests
     WHERE status = 'accepted'
       AND ((sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?))
-  `).get(id1, id2, id2, id1);
+  `, [id1, id2, id2, id1]);
   return Boolean(row);
 }
 
-function isGroupMember(groupId, userId) {
-  const row = db.prepare('SELECT 1 FROM group_members WHERE group_id = ? AND user_id = ?').get(groupId, userId);
+async function isGroupMember(groupId, userId) {
+  const row = await dbGet('SELECT 1 FROM group_members WHERE group_id = ? AND user_id = ?', [groupId, userId]);
   return Boolean(row);
 }
 
@@ -291,7 +413,6 @@ async function sendGmailOtp(toEmail, otp, purposeLabel) {
       </div>
     </div>`;
 
-  // Cloud / Render ke liye Brevo HTTPS API (Port 443)
   if (BREVO_API_KEY) {
     const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
@@ -314,7 +435,6 @@ async function sendGmailOtp(toEmail, otp, purposeLabel) {
     return;
   }
 
-  // Local PC ke liye Gmail SMTP Fallback
   if (!SENDER_APP_PASSWORD) {
     throw new Error('BREVO_API_KEY ya SENDER_APP_PASSWORD set karein.');
   }
@@ -474,13 +594,13 @@ const server = http.createServer(async (req, res) => {
       if (!cleanPhone) return sendJson(res, 400, { error: 'Sahi 10-digit mobile number daalein.' });
       if (!cleanEmail || !cleanEmail.includes('@')) return sendJson(res, 400, { error: 'Sahi email address daalein.' });
 
-      if (db.prepare('SELECT id FROM users WHERE username = ?').get(cleanUsername)) {
+      if (await dbGet('SELECT id FROM users WHERE username = ?', [cleanUsername])) {
         return sendJson(res, 400, { error: `Username "@${cleanUsername}" pehle se liya ja chuka hai.` });
       }
-      if (db.prepare('SELECT id FROM users WHERE phone = ?').get(cleanPhone)) {
+      if (await dbGet('SELECT id FROM users WHERE phone = ?', [cleanPhone])) {
         return sendJson(res, 400, { error: 'Is mobile number se pehle se ek account linked hai!' });
       }
-      if (db.prepare('SELECT id FROM users WHERE email = ?').get(cleanEmail)) {
+      if (await dbGet('SELECT id FROM users WHERE email = ?', [cleanEmail])) {
         return sendJson(res, 400, { error: 'Is email se pehle se account bana hai. Login tab use karein.' });
       }
 
@@ -488,12 +608,12 @@ const server = http.createServer(async (req, res) => {
       const expiresAt = Date.now() + 5 * 60 * 1000;
       const pendingData = JSON.stringify({ name: cleanName, username: cleanUsername, phone: cleanPhone, email: cleanEmail });
 
-      db.prepare(`
+      await dbRun(`
         INSERT INTO otps (email, otp, purpose, pending_data, expires_at)
         VALUES (?, ?, 'signup', ?, ?)
         ON CONFLICT(email) DO UPDATE SET
           otp = excluded.otp, purpose = 'signup', pending_data = excluded.pending_data, expires_at = excluded.expires_at
-      `).run(cleanEmail, otp, pendingData, expiresAt);
+      `, [cleanEmail, otp, pendingData, expiresAt]);
 
       await sendGmailOtp(cleanEmail, otp, 'Account Registration');
       return sendJson(res, 200, {
@@ -511,11 +631,11 @@ const server = http.createServer(async (req, res) => {
 
       let user = null;
       if (rawId.includes('@') && rawId.includes('.')) {
-        user = db.prepare('SELECT * FROM users WHERE email = ?').get(rawId);
+        user = await dbGet('SELECT * FROM users WHERE email = ?', [rawId]);
       } else {
         const cleanPhone = normalizePhone(rawId);
         const cleanUser = rawId.replace(/^@+/, '');
-        user = db.prepare('SELECT * FROM users WHERE phone = ? OR username = ?').get(cleanPhone, cleanUser);
+        user = await dbGet('SELECT * FROM users WHERE phone = ? OR username = ?', [cleanPhone, cleanUser]);
       }
 
       if (!user) {
@@ -525,12 +645,12 @@ const server = http.createServer(async (req, res) => {
       const otp = crypto.randomInt(100000, 999999).toString();
       const expiresAt = Date.now() + 5 * 60 * 1000;
 
-      db.prepare(`
+      await dbRun(`
         INSERT INTO otps (email, otp, purpose, pending_data, expires_at)
         VALUES (?, ?, 'login', NULL, ?)
         ON CONFLICT(email) DO UPDATE SET
           otp = excluded.otp, purpose = 'login', pending_data = NULL, expires_at = excluded.expires_at
-      `).run(user.email, otp, expiresAt);
+      `, [user.email, otp, expiresAt]);
 
       await sendGmailOtp(user.email, otp, 'Login');
       return sendJson(res, 200, {
@@ -540,45 +660,45 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
-    // 3. VERIFY OTP & CREATE DEVICE SESSION
+    // 3. VERIFY OTP & CREATE PERSISTENT DEVICE SESSION
     if (req.method === 'POST' && url.pathname === '/api/verify-otp') {
       const { targetEmail, otp, publicKey, encryptedPrivKey, pinSalt, pinIv } = await readJsonBody(req);
       const cleanEmail = (targetEmail || '').trim().toLowerCase();
 
-      const record = db.prepare('SELECT * FROM otps WHERE email = ?').get(cleanEmail);
+      const record = await dbGet('SELECT * FROM otps WHERE email = ?', [cleanEmail]);
       if (!record) return sendJson(res, 400, { error: 'Pehle OTP request karein.' });
-      if (Date.now() > record.expires_at) return sendJson(res, 400, { error: 'OTP expire ho gaya hai.' });
+      if (Date.now() > Number(record.expires_at)) return sendJson(res, 400, { error: 'OTP expire ho gaya hai.' });
       if (record.otp !== (otp || '').trim()) return sendJson(res, 400, { error: 'Galat OTP hai!' });
 
-      db.prepare('DELETE FROM otps WHERE email = ?').run(cleanEmail);
+      await dbRun('DELETE FROM otps WHERE email = ?', [cleanEmail]);
 
       let user = null;
       if (record.purpose === 'signup') {
         const data = JSON.parse(record.pending_data);
-        if (db.prepare('SELECT id FROM users WHERE username = ? OR phone = ? OR email = ?').get(data.username, data.phone, data.email)) {
+        if (await dbGet('SELECT id FROM users WHERE username = ? OR phone = ? OR email = ?', [data.username, data.phone, data.email])) {
           return sendJson(res, 400, { error: 'Ye details abhi-abhi register ho chuki hain.' });
         }
-        const info = db.prepare(`
+        const info = await dbRun(`
           INSERT INTO users (name, username, phone, email, public_key, encrypted_priv_key, pin_salt, pin_iv, last_seen)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(data.name, data.username, data.phone, data.email, publicKey || '', encryptedPrivKey || '', pinSalt || '', pinIv || '', Date.now());
+        `, [data.name, data.username, data.phone, data.email, publicKey || '', encryptedPrivKey || '', pinSalt || '', pinIv || '', Date.now()], true);
 
-        user = db.prepare('SELECT * FROM users WHERE id = ?').get(Number(info.lastInsertRowid));
+        user = await dbGet('SELECT * FROM users WHERE id = ?', [Number(info.lastInsertRowid)]);
       } else {
-        user = db.prepare('SELECT * FROM users WHERE email = ?').get(cleanEmail);
+        user = await dbGet('SELECT * FROM users WHERE email = ?', [cleanEmail]);
         if (!user) return sendJson(res, 404, { error: 'User account nahi mila.' });
-        db.prepare('UPDATE users SET last_seen = ? WHERE id = ?').run(Date.now(), user.id);
+        await dbRun('UPDATE users SET last_seen = ? WHERE id = ?', [Date.now(), user.id]);
         if (!user.public_key && publicKey) {
-          db.prepare('UPDATE users SET public_key = ?, encrypted_priv_key = ?, pin_salt = ?, pin_iv = ? WHERE id = ?')
-            .run(publicKey, encryptedPrivKey || '', pinSalt || '', pinIv || '', user.id);
-          user = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id);
+          await dbRun('UPDATE users SET public_key = ?, encrypted_priv_key = ?, pin_salt = ?, pin_iv = ? WHERE id = ?',
+            [publicKey, encryptedPrivKey || '', pinSalt || '', pinIv || '', user.id]);
+          user = await dbGet('SELECT * FROM users WHERE id = ?', [user.id]);
         }
       }
 
       const sessionToken = crypto.randomBytes(24).toString('hex');
       const deviceName = parseDeviceName(req.headers['user-agent'] || '');
-      db.prepare('INSERT INTO sessions (user_id, token, device_name, last_active) VALUES (?, ?, ?, ?)')
-        .run(user.id, sessionToken, deviceName, Date.now());
+      await dbRun('INSERT INTO sessions (user_id, token, device_name, last_active) VALUES (?, ?, ?, ?)',
+        [user.id, sessionToken, deviceName, Date.now()]);
 
       return sendJson(res, 200, {
         success: true,
@@ -586,19 +706,20 @@ const server = http.createServer(async (req, res) => {
         sessionToken
       });
     }
+
     // Auto-restore persistent login session when app reopens
     if (req.method === 'POST' && url.pathname === '/api/session/restore') {
       const { userId, sessionToken } = await readJsonBody(req);
       if (!userId || !sessionToken) return sendJson(res, 400, { error: 'Missing session data' });
 
-      const sess = db.prepare('SELECT id FROM sessions WHERE user_id = ? AND token = ?').get(userId, sessionToken);
+      const sess = await dbGet('SELECT id FROM sessions WHERE user_id = ? AND token = ?', [userId, sessionToken]);
       if (!sess) return sendJson(res, 401, { error: 'Session expired or revoked' });
 
-      const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+      const user = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
       if (!user) return sendJson(res, 401, { error: 'User account not found' });
 
-      db.prepare('UPDATE sessions SET last_active = ? WHERE id = ?').run(Date.now(), sess.id);
-      db.prepare('UPDATE users SET last_seen = ? WHERE id = ?').run(Date.now(), user.id);
+      await dbRun('UPDATE sessions SET last_active = ? WHERE id = ?', [Date.now(), sess.id]);
+      await dbRun('UPDATE users SET last_seen = ? WHERE id = ?', [Date.now(), user.id]);
 
       return sendJson(res, 200, {
         success: true,
@@ -607,19 +728,19 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
-    // Explicit Logout (removes session from server)
+    // Explicit Logout
     if (req.method === 'POST' && url.pathname === '/api/logout') {
       const { userId, sessionToken } = await readJsonBody(req);
       if (userId && sessionToken) {
-        db.prepare('DELETE FROM sessions WHERE user_id = ? AND token = ?').run(userId, sessionToken);
+        await dbRun('DELETE FROM sessions WHERE user_id = ? AND token = ?', [userId, sessionToken]);
       }
       return sendJson(res, 200, { success: true });
     }
 
     if (req.method === 'POST' && url.pathname === '/api/keys/backup') {
       const { userId, publicKey, encryptedPrivKey, pinSalt, pinIv } = await readJsonBody(req);
-      db.prepare('UPDATE users SET public_key = ?, encrypted_priv_key = ?, pin_salt = ?, pin_iv = ? WHERE id = ?')
-        .run(publicKey, encryptedPrivKey, pinSalt, pinIv, userId);
+      await dbRun('UPDATE users SET public_key = ?, encrypted_priv_key = ?, pin_salt = ?, pin_iv = ? WHERE id = ?',
+        [publicKey, encryptedPrivKey, pinSalt, pinIv, userId]);
       return sendJson(res, 200, { success: true });
     }
 
@@ -629,7 +750,7 @@ const server = http.createServer(async (req, res) => {
       if (!acceptedTerms) {
         return sendJson(res, 400, { error: 'Account delete request ke liye Terms & Conditions par tick karna zaroori hai.' });
       }
-      const user = db.prepare('SELECT id, email FROM users WHERE id = ?').get(userId);
+      const user = await dbGet('SELECT id, email FROM users WHERE id = ?', [userId]);
       if (!user) return sendJson(res, 404, { error: 'User nahi mila.' });
       if (isAdminUser(user)) {
         return sendJson(res, 400, { error: 'Primary Administrator account delete nahi kiya ja sakta.' });
@@ -639,7 +760,7 @@ const server = http.createServer(async (req, res) => {
       const deviceInfo = parseDeviceName(req.headers['user-agent'] || '');
       const cleanReason = (reason || '').trim().slice(0, 250);
 
-      db.prepare(`
+      await dbRun(`
         INSERT INTO deletion_requests (user_id, reason, accepted_terms, terms_accepted_at, device_info, status)
         VALUES (?, ?, 1, ?, ?, 'pending')
         ON CONFLICT(user_id) DO UPDATE SET
@@ -649,7 +770,7 @@ const server = http.createServer(async (req, res) => {
           device_info = excluded.device_info,
           status = 'pending',
           created_at = CURRENT_TIMESTAMP
-      `).run(userId, cleanReason, acceptedAt, deviceInfo);
+      `, [userId, cleanReason, acceptedAt, deviceInfo]);
 
       return sendJson(res, 200, {
         success: true,
@@ -659,32 +780,33 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'POST' && url.pathname === '/api/account/cancel-delete') {
       const { userId } = await readJsonBody(req);
-      db.prepare("DELETE FROM deletion_requests WHERE user_id = ? AND status = 'pending'").run(userId);
+      await dbRun("DELETE FROM deletion_requests WHERE user_id = ? AND status = 'pending'", [userId]);
       return sendJson(res, 200, { success: true });
     }
 
-    // 5. ADMINISTRATOR PANEL APIs (OVERVIEW + REVIEW DELETION)
+    // 5. ADMINISTRATOR PANEL APIs
     if (req.method === 'GET' && url.pathname === '/api/admin/overview') {
       const adminId = Number(url.searchParams.get('adminId') || 0);
-      const adminUser = db.prepare('SELECT * FROM users WHERE id = ?').get(adminId);
+      const adminUser = await dbGet('SELECT * FROM users WHERE id = ?', [adminId]);
       if (!isAdminUser(adminUser)) {
         return sendJson(res, 403, { error: 'Unauthorized: Sirf Administrator hi ye panel dekh sakta hai.' });
       }
 
       const now = Date.now();
-      const users = db.prepare(`
+      const rawUsers = await dbAll(`
         SELECT u.id, u.name, u.username, u.phone, u.email, u.last_seen, u.created_at,
                dr.status AS deletion_status, dr.terms_accepted_at
         FROM users u
         LEFT JOIN deletion_requests dr ON dr.user_id = u.id
         ORDER BY u.id DESC
-      `).all().map((u) => ({
+      `);
+      const users = rawUsers.map((u) => ({
         ...u,
-        is_online: now - (u.last_seen || 0) < 12000,
+        is_online: now - (Number(u.last_seen) || 0) < 12000,
         is_admin: u.email.toLowerCase() === ADMIN_EMAIL
       }));
 
-      const deletionRequests = db.prepare(`
+      const deletionRequests = await dbAll(`
         SELECT dr.id AS request_id, dr.user_id, dr.reason, dr.accepted_terms, dr.terms_accepted_at,
                dr.device_info, dr.status, dr.created_at,
                u.name, u.username, u.phone, u.email
@@ -692,23 +814,23 @@ const server = http.createServer(async (req, res) => {
         JOIN users u ON u.id = dr.user_id
         WHERE dr.status = 'pending'
         ORDER BY dr.id ASC
-      `).all();
+      `);
 
-      const auditLogs = db.prepare(`
+      const auditLogs = await dbAll(`
         SELECT * FROM deletion_audit_logs
         ORDER BY id DESC
         LIMIT 50
-      `).all();
+      `);
 
-      const groupCount = db.prepare('SELECT COUNT(*) AS c FROM groups').get().c;
-      const msgCount = db.prepare('SELECT COUNT(*) AS c FROM messages').get().c;
+      const groupCount = await dbGet('SELECT COUNT(*) AS c FROM groups');
+      const msgCount = await dbGet('SELECT COUNT(*) AS c FROM messages');
 
       return sendJson(res, 200, {
         stats: {
           totalUsers: users.length,
           pendingDeletions: deletionRequests.length,
-          totalGroups: groupCount,
-          totalMessages: msgCount
+          totalGroups: Number(groupCount?.c || 0),
+          totalMessages: Number(msgCount?.c || 0)
         },
         users,
         deletionRequests,
@@ -718,24 +840,24 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'POST' && url.pathname === '/api/admin/review-delete') {
       const { adminId, targetUserId, action } = await readJsonBody(req);
-      const adminUser = db.prepare('SELECT * FROM users WHERE id = ?').get(adminId);
+      const adminUser = await dbGet('SELECT * FROM users WHERE id = ?', [adminId]);
       if (!isAdminUser(adminUser)) {
         return sendJson(res, 403, { error: 'Unauthorized: Administrator access required.' });
       }
 
-      const targetUser = db.prepare('SELECT * FROM users WHERE id = ?').get(targetUserId);
+      const targetUser = await dbGet('SELECT * FROM users WHERE id = ?', [targetUserId]);
       if (!targetUser) return sendJson(res, 404, { error: 'User account nahi mila.' });
       if (isAdminUser(targetUser)) {
         return sendJson(res, 400, { error: 'Admin account delete nahi ho sakta.' });
       }
 
-      const reqRow = db.prepare('SELECT * FROM deletion_requests WHERE user_id = ?').get(targetUserId);
+      const reqRow = await dbGet('SELECT * FROM deletion_requests WHERE user_id = ?', [targetUserId]);
 
       if (action === 'approve') {
         if (!reqRow || !reqRow.accepted_terms) {
           return sendJson(res, 400, { error: 'User ne abhi tak Terms & Conditions accept nahi ki hain.' });
         }
-        permanentlyDeleteUserAccount(targetUserId, reqRow.reason, reqRow.terms_accepted_at, adminUser.email);
+        await permanentlyDeleteUserAccount(targetUserId, reqRow.reason, reqRow.terms_accepted_at, adminUser.email);
         return sendJson(res, 200, {
           success: true,
           message: `@${targetUser.username} (${targetUser.name}) ka account review ke baad permanently delete kar diya gaya hai.`
@@ -743,7 +865,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (action === 'reject') {
-        db.prepare("UPDATE deletion_requests SET status = 'rejected' WHERE user_id = ?").run(targetUserId);
+        await dbRun("UPDATE deletion_requests SET status = 'rejected' WHERE user_id = ?", [targetUserId]);
         return sendJson(res, 200, {
           success: true,
           message: `@${targetUser.username} ki deletion request reject kar di gayi hai.`
@@ -760,14 +882,14 @@ const server = http.createServer(async (req, res) => {
       const cleanBio = (bio || '').trim().slice(0, 140);
       if (cleanName.length < 2) return sendJson(res, 400, { error: 'Naam kam se kam 2 letters ka hona chahiye.' });
 
-      db.prepare('UPDATE users SET name = ?, bio = ? WHERE id = ?').run(cleanName, cleanBio, userId);
-      const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+      await dbRun('UPDATE users SET name = ?, bio = ? WHERE id = ?', [cleanName, cleanBio, userId]);
+      const user = await dbGet('SELECT * FROM users WHERE id = ?', [userId]);
       return sendJson(res, 200, { success: true, user: { ...user, is_admin: isAdminUser(user) } });
     }
 
     if (req.method === 'POST' && url.pathname === '/api/sessions/revoke') {
       const { userId, sessionId } = await readJsonBody(req);
-      db.prepare('DELETE FROM sessions WHERE id = ? AND user_id = ?').run(sessionId, userId);
+      await dbRun('DELETE FROM sessions WHERE id = ? AND user_id = ?', [sessionId, userId]);
       return sendJson(res, 200, { success: true });
     }
 
@@ -776,38 +898,38 @@ const server = http.createServer(async (req, res) => {
       const { userId, ttlMs } = await readJsonBody(req);
       const token = 'CC-' + crypto.randomBytes(4).toString('hex').toUpperCase();
       const expiresAt = Date.now() + (Number(ttlMs) || 3600000);
-      db.prepare('INSERT INTO invite_tokens (token, creator_id, expires_at) VALUES (?, ?, ?)').run(token, userId, expiresAt);
+      await dbRun('INSERT INTO invite_tokens (token, creator_id, expires_at) VALUES (?, ?, ?)', [token, userId, expiresAt]);
       return sendJson(res, 200, { success: true, token, expiresAt });
     }
 
     if (req.method === 'POST' && url.pathname === '/api/invites/redeem') {
       const { userId, token } = await readJsonBody(req);
       const cleanToken = (token || '').trim().toUpperCase();
-      const inv = db.prepare('SELECT * FROM invite_tokens WHERE token = ?').get(cleanToken);
+      const inv = await dbGet('SELECT * FROM invite_tokens WHERE token = ?', [cleanToken]);
       if (!inv) return sendJson(res, 404, { error: 'Invalid invite code.' });
-      if (Date.now() > inv.expires_at) {
-        db.prepare('DELETE FROM invite_tokens WHERE token = ?').run(cleanToken);
+      if (Date.now() > Number(inv.expires_at)) {
+        await dbRun('DELETE FROM invite_tokens WHERE token = ?', [cleanToken]);
         return sendJson(res, 400, { error: 'Invite link/code expire ho chuka hai.' });
       }
       if (Number(inv.creator_id) === Number(userId)) {
         return sendJson(res, 400, { error: 'Ye aapka khud ka invite code hai.' });
       }
-      if (isBlockedBetween(userId, inv.creator_id)) {
+      if (await isBlockedBetween(userId, inv.creator_id)) {
         return sendJson(res, 403, { error: 'Cannot connect with this user.' });
       }
 
-      const creator = db.prepare('SELECT id, name, username FROM users WHERE id = ?').get(inv.creator_id);
+      const creator = await dbGet('SELECT id, name, username FROM users WHERE id = ?', [inv.creator_id]);
       if (!creator) return sendJson(res, 404, { error: 'Creator account nahi mila.' });
 
-      const existing = db.prepare(`
+      const existing = await dbGet(`
         SELECT * FROM friend_requests
         WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)
-      `).get(userId, creator.id, creator.id, userId);
+      `, [userId, creator.id, creator.id, userId]);
 
       if (existing) {
-        db.prepare("UPDATE friend_requests SET status = 'accepted' WHERE id = ?").run(existing.id);
+        await dbRun("UPDATE friend_requests SET status = 'accepted' WHERE id = ?", [existing.id]);
       } else {
-        db.prepare("INSERT INTO friend_requests (sender_id, receiver_id, status) VALUES (?, ?, 'accepted')").run(creator.id, userId);
+        await dbRun("INSERT INTO friend_requests (sender_id, receiver_id, status) VALUES (?, ?, 'accepted')", [creator.id, userId]);
       }
 
       return sendJson(res, 200, {
@@ -819,15 +941,15 @@ const server = http.createServer(async (req, res) => {
     // 8. EXPORT ENCRYPTED VAULT DATA (.cipher)
     if (req.method === 'GET' && url.pathname === '/api/vault/export') {
       const userId = Number(url.searchParams.get('userId') || 0);
-      const user = db.prepare('SELECT id, name, username, phone, email, bio, public_key FROM users WHERE id = ?').get(userId);
+      const user = await dbGet('SELECT id, name, username, phone, email, bio, public_key FROM users WHERE id = ?', [userId]);
       if (!user) return sendJson(res, 404, { error: 'User not found' });
 
-      const messages = db.prepare(`
+      const messages = await dbAll(`
         SELECT id, sender_id, receiver_id, group_id, msg_type, ciphertext, iv, file_name, is_sealed, created_at
         FROM messages
         WHERE sender_id = ? OR receiver_id = ?
         ORDER BY id ASC
-      `).all(userId, userId);
+      `, [userId, userId]);
 
       return sendJson(res, 200, { user, messages, exportedAt: new Date().toISOString() });
     }
@@ -840,15 +962,15 @@ const server = http.createServer(async (req, res) => {
 
       let target = null;
       if (q.includes('@') && q.includes('.')) {
-        target = db.prepare('SELECT id, name, username, phone, email, bio FROM users WHERE email = ?').get(q);
+        target = await dbGet('SELECT id, name, username, phone, email, bio FROM users WHERE email = ?', [q]);
       } else {
         const cleanUser = q.replace(/^@+/, '');
         const cleanPhone = normalizePhone(q);
-        target = db.prepare('SELECT id, name, username, phone, email, bio FROM users WHERE username = ? OR phone = ?').get(cleanUser, cleanPhone);
+        target = await dbGet('SELECT id, name, username, phone, email, bio FROM users WHERE username = ? OR phone = ?', [cleanUser, cleanPhone]);
       }
 
       if (!target || Number(target.id) === myId) return sendJson(res, 404, { error: 'Koi matching user nahi mila.' });
-      if (isBlockedBetween(myId, target.id)) return sendJson(res, 403, { error: 'Ye user available nahi hai (Blocked).' });
+      if (await isBlockedBetween(myId, target.id)) return sendJson(res, 403, { error: 'Ye user available nahi hai (Blocked).' });
 
       return sendJson(res, 200, { user: target });
     }
@@ -860,67 +982,67 @@ const server = http.createServer(async (req, res) => {
 
       let target = null;
       if (q.includes('@') && q.includes('.')) {
-        target = db.prepare('SELECT id, name, username FROM users WHERE email = ?').get(q);
+        target = await dbGet('SELECT id, name, username FROM users WHERE email = ?', [q]);
       } else {
         const cleanUser = q.replace(/^@+/, '');
         const cleanPhone = normalizePhone(q);
-        target = db.prepare('SELECT id, name, username FROM users WHERE username = ? OR phone = ?').get(cleanUser, cleanPhone);
+        target = await dbGet('SELECT id, name, username FROM users WHERE username = ? OR phone = ?', [cleanUser, cleanPhone]);
       }
 
       if (!target) return sendJson(res, 404, { error: 'Is Username, Mobile ya Email se koi account nahi mila.' });
       if (Number(target.id) === Number(senderId)) return sendJson(res, 400, { error: 'Khud ko request nahi bhej sakte.' });
-      if (isBlockedBetween(senderId, target.id)) return sendJson(res, 403, { error: 'Aap is user ko request nahi bhej sakte.' });
+      if (await isBlockedBetween(senderId, target.id)) return sendJson(res, 403, { error: 'Aap is user ko request nahi bhej sakte.' });
 
-      const existing = db.prepare(`
+      const existing = await dbGet(`
         SELECT * FROM friend_requests
         WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)
-      `).get(senderId, target.id, target.id, senderId);
+      `, [senderId, target.id, target.id, senderId]);
 
       if (existing) {
         if (existing.status === 'accepted') return sendJson(res, 400, { error: `@${target.username} pehle se aapke friend hain!` });
         if (existing.status === 'pending') {
           if (Number(existing.receiver_id) === Number(senderId)) {
-            db.prepare("UPDATE friend_requests SET status = 'accepted' WHERE id = ?").run(existing.id);
+            await dbRun("UPDATE friend_requests SET status = 'accepted' WHERE id = ?", [existing.id]);
             return sendJson(res, 200, { success: true, message: `@${target.username} ki request accept ho gayi!` });
           }
           return sendJson(res, 400, { error: `@${target.username} ko request pehle se bheji ja chuki hai.` });
         }
-        db.prepare("UPDATE friend_requests SET sender_id = ?, receiver_id = ?, status = 'pending' WHERE id = ?").run(senderId, target.id, existing.id);
+        await dbRun("UPDATE friend_requests SET sender_id = ?, receiver_id = ?, status = 'pending' WHERE id = ?", [senderId, target.id, existing.id]);
         return sendJson(res, 200, { success: true, message: `@${target.username} ko friend request bhej di gayi!` });
       }
 
-      db.prepare('INSERT INTO friend_requests (sender_id, receiver_id, status) VALUES (?, ?, ?)').run(senderId, target.id, 'pending');
+      await dbRun('INSERT INTO friend_requests (sender_id, receiver_id, status) VALUES (?, ?, ?)', [senderId, target.id, 'pending']);
       return sendJson(res, 200, { success: true, message: `@${target.username} (${target.name}) ko friend request bhej di gayi!` });
     }
 
     if (req.method === 'POST' && url.pathname === '/api/friends/respond') {
       const { requestId, userId, action } = await readJsonBody(req);
-      const reqRow = db.prepare('SELECT * FROM friend_requests WHERE id = ? AND receiver_id = ?').get(requestId, userId);
+      const reqRow = await dbGet('SELECT * FROM friend_requests WHERE id = ? AND receiver_id = ?', [requestId, userId]);
       if (!reqRow) return sendJson(res, 404, { error: 'Request nahi mili.' });
 
       const newStatus = action === 'accept' ? 'accepted' : 'rejected';
-      db.prepare('UPDATE friend_requests SET status = ? WHERE id = ?').run(newStatus, requestId);
+      await dbRun('UPDATE friend_requests SET status = ? WHERE id = ?', [newStatus, requestId]);
       return sendJson(res, 200, { success: true, status: newStatus });
     }
 
     if (req.method === 'POST' && url.pathname === '/api/friends/unfriend') {
       const { userId, targetId } = await readJsonBody(req);
-      db.prepare('DELETE FROM friend_requests WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)')
-        .run(userId, targetId, targetId, userId);
+      await dbRun('DELETE FROM friend_requests WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)',
+        [userId, targetId, targetId, userId]);
       return sendJson(res, 200, { success: true });
     }
 
     if (req.method === 'POST' && url.pathname === '/api/friends/block') {
       const { userId, targetId } = await readJsonBody(req);
-      db.prepare('DELETE FROM friend_requests WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)')
-        .run(userId, targetId, targetId, userId);
-      db.prepare('INSERT OR IGNORE INTO blocks (blocker_id, blocked_id) VALUES (?, ?)').run(userId, targetId);
+      await dbRun('DELETE FROM friend_requests WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)',
+        [userId, targetId, targetId, userId]);
+      await dbRun('INSERT INTO blocks (blocker_id, blocked_id) VALUES (?, ?) ON CONFLICT DO NOTHING', [userId, targetId]);
       return sendJson(res, 200, { success: true });
     }
 
     if (req.method === 'POST' && url.pathname === '/api/friends/unblock') {
       const { userId, targetId } = await readJsonBody(req);
-      db.prepare('DELETE FROM blocks WHERE blocker_id = ? AND blocked_id = ?').run(userId, targetId);
+      await dbRun('DELETE FROM blocks WHERE blocker_id = ? AND blocked_id = ?', [userId, targetId]);
       return sendJson(res, 200, { success: true });
     }
 
@@ -933,15 +1055,14 @@ const server = http.createServer(async (req, res) => {
         return sendJson(res, 400, { error: 'Group me kam se kam 1 friend select karein.' });
       }
 
-      const info = db.prepare('INSERT INTO groups (name, created_by) VALUES (?, ?)').run(cleanName, creatorId);
+      const info = await dbRun('INSERT INTO groups (name, created_by) VALUES (?, ?)', [cleanName, creatorId], true);
       const groupId = Number(info.lastInsertRowid);
 
-      const insertMember = db.prepare(`
-        INSERT INTO group_members (group_id, user_id, encrypted_group_key, key_iv, added_by)
-        VALUES (?, ?, ?, ?, ?)
-      `);
       for (const m of members) {
-        insertMember.run(groupId, m.userId, m.encryptedGroupKey, m.keyIv, creatorId);
+        await dbRun(`
+          INSERT INTO group_members (group_id, user_id, encrypted_group_key, key_iv, added_by)
+          VALUES (?, ?, ?, ?, ?)
+        `, [groupId, m.userId, m.encryptedGroupKey, m.keyIv, creatorId]);
       }
 
       return sendJson(res, 200, { success: true, groupId });
@@ -953,21 +1074,21 @@ const server = http.createServer(async (req, res) => {
       const sessionToken = url.searchParams.get('sessionToken') || '';
       if (!userId) return sendJson(res, 400, { error: 'userId required' });
 
-      const userRow = db.prepare('SELECT id, email FROM users WHERE id = ?').get(userId);
+      const userRow = await dbGet('SELECT id, email FROM users WHERE id = ?', [userId]);
       if (!userRow) {
         return sendJson(res, 401, { revoked: true, error: 'Aapka account Admin review ke baad permanently delete kar diya gaya hai.' });
       }
 
       const now = Date.now();
       if (sessionToken) {
-        const sess = db.prepare('SELECT id FROM sessions WHERE user_id = ? AND token = ?').get(userId, sessionToken);
+        const sess = await dbGet('SELECT id FROM sessions WHERE user_id = ? AND token = ?', [userId, sessionToken]);
         if (!sess) return sendJson(res, 401, { revoked: true, error: 'Session revoked from another device.' });
-        db.prepare('UPDATE sessions SET last_active = ? WHERE id = ?').run(now, sess.id);
+        await dbRun('UPDATE sessions SET last_active = ? WHERE id = ?', [now, sess.id]);
       }
 
-      db.prepare('UPDATE users SET last_seen = ? WHERE id = ?').run(now, userId);
+      await dbRun('UPDATE users SET last_seen = ? WHERE id = ?', [now, userId]);
 
-      const friends = db.prepare(`
+      const rawFriends = await dbAll(`
         SELECT u.id, u.name, u.username, u.phone, u.email, u.bio, u.public_key, u.last_seen,
                (SELECT COUNT(*) FROM messages m
                 WHERE m.group_id IS NULL AND m.sender_id = u.id AND m.receiver_id = ? AND m.is_read = 0 AND m.is_deleted = 0) AS unread_count
@@ -975,28 +1096,31 @@ const server = http.createServer(async (req, res) => {
         JOIN users u ON u.id = CASE WHEN fr.sender_id = ? THEN fr.receiver_id ELSE fr.sender_id END
         WHERE fr.status = 'accepted' AND (fr.sender_id = ? OR fr.receiver_id = ?)
         ORDER BY u.name ASC
-      `).all(userId, userId, userId, userId).map((f) => ({
+      `, [userId, userId, userId, userId]);
+
+      const friends = rawFriends.map((f) => ({
         ...f,
-        is_online: now - (f.last_seen || 0) < 12000
+        unread_count: Number(f.unread_count || 0),
+        is_online: now - (Number(f.last_seen) || 0) < 12000
       }));
 
-      const incoming = db.prepare(`
+      const incoming = await dbAll(`
         SELECT fr.id AS request_id, u.id AS user_id, u.name, u.username, u.email
         FROM friend_requests fr
         JOIN users u ON u.id = fr.sender_id
         WHERE fr.receiver_id = ? AND fr.status = 'pending'
         ORDER BY fr.id DESC
-      `).all(userId);
+      `, [userId]);
 
-      const outgoing = db.prepare(`
+      const outgoing = await dbAll(`
         SELECT fr.id AS request_id, u.id AS user_id, u.name, u.username
         FROM friend_requests fr
         JOIN users u ON u.id = fr.receiver_id
         WHERE fr.sender_id = ? AND fr.status = 'pending'
         ORDER BY fr.id DESC
-      `).all(userId);
+      `, [userId]);
 
-      const groups = db.prepare(`
+      const rawGroups = await dbAll(`
         SELECT g.id, g.name, g.created_by, gm.encrypted_group_key, gm.key_iv,
                u_adder.public_key AS adder_public_key,
                (SELECT COUNT(*) FROM group_members WHERE group_id = g.id) AS member_count
@@ -1005,27 +1129,32 @@ const server = http.createServer(async (req, res) => {
         JOIN users u_adder ON u_adder.id = gm.added_by
         WHERE gm.user_id = ?
         ORDER BY g.id DESC
-      `).all(userId);
+      `, [userId]);
 
-      const blocked = db.prepare(`
+      const groups = rawGroups.map((g) => ({
+        ...g,
+        member_count: Number(g.member_count || 0)
+      }));
+
+      const blocked = await dbAll(`
         SELECT u.id, u.name, u.username
         FROM blocks b
         JOIN users u ON u.id = b.blocked_id
         WHERE b.blocker_id = ?
-      `).all(userId);
+      `, [userId]);
 
-      const sessions = db.prepare(`
+      const sessions = await dbAll(`
         SELECT id, token, device_name, last_active
         FROM sessions
         WHERE user_id = ?
         ORDER BY last_active DESC
-      `).all(userId);
+      `, [userId]);
 
-      const deletionRequest = db.prepare(`
+      const deletionRequest = await dbGet(`
         SELECT status, reason, terms_accepted_at, created_at
         FROM deletion_requests
         WHERE user_id = ?
-      `).get(userId) || null;
+      `, [userId]);
 
       return sendJson(res, 200, {
         friends,
@@ -1042,9 +1171,9 @@ const server = http.createServer(async (req, res) => {
     // 12. WEBRTC AUDIO/VIDEO/SCREEN CALL SIGNALING
     if (req.method === 'POST' && url.pathname === '/api/call/signal') {
       const { fromUserId, toUserId, type, payload } = await readJsonBody(req);
-      if (!areFriends(fromUserId, toUserId)) return sendJson(res, 403, { error: 'Not friends' });
+      if (!(await areFriends(fromUserId, toUserId))) return sendJson(res, 403, { error: 'Not friends' });
 
-      const sender = db.prepare('SELECT id, name, username FROM users WHERE id = ?').get(fromUserId);
+      const sender = await dbGet('SELECT id, name, username FROM users WHERE id = ?', [fromUserId]);
       if (!sender) return sendJson(res, 404, { error: 'Sender not found' });
 
       const targetId = Number(toUserId);
@@ -1074,31 +1203,31 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, { success: true });
     }
 
-    // 14. ENCRYPTED MESSAGES (SEALED SENDER, STEGO, POLLS, EDITING)
+    // 14. ENCRYPTED MESSAGES
     if (req.method === 'GET' && url.pathname === '/api/messages') {
       const userId = Number(url.searchParams.get('userId') || 0);
       const peerId = Number(url.searchParams.get('peerId') || 0);
       const groupId = Number(url.searchParams.get('groupId') || 0);
       const now = Date.now();
 
-      db.prepare('DELETE FROM messages WHERE expires_at IS NOT NULL AND expires_at <= ?').run(now);
+      await dbRun('DELETE FROM messages WHERE expires_at IS NOT NULL AND expires_at <= ?', [now]);
 
       if (groupId) {
-        if (!isGroupMember(groupId, userId)) return sendJson(res, 403, { error: 'Not a group member' });
-        const rows = db.prepare(`
+        if (!(await isGroupMember(groupId, userId))) return sendJson(res, 403, { error: 'Not a group member' });
+        const rows = await dbAll(`
           SELECT m.*, u.name AS sender_name, u.username AS sender_username
           FROM messages m
           LEFT JOIN users u ON u.id = m.sender_id
           WHERE m.group_id = ?
           ORDER BY m.id ASC
-        `).all(groupId);
+        `, [groupId]);
 
         let typingUser = null;
         for (const [k, ts] of typingStatus.entries()) {
           if (k.endsWith(`->group:${groupId}`) && now - ts < 3500) {
             const typerId = Number(k.split('->')[0]);
             if (typerId !== userId) {
-              const u = db.prepare('SELECT name FROM users WHERE id = ?').get(typerId);
+              const u = await dbGet('SELECT name FROM users WHERE id = ?', [typerId]);
               if (u) typingUser = u.name;
             }
           }
@@ -1106,12 +1235,12 @@ const server = http.createServer(async (req, res) => {
         return sendJson(res, 200, { messages: rows, typingUser });
       }
 
-      if (!areFriends(userId, peerId)) return sendJson(res, 403, { error: 'Friend request accept honi zaroori hai.' });
+      if (!(await areFriends(userId, peerId))) return sendJson(res, 403, { error: 'Friend request accept honi zaroori hai.' });
 
-      db.prepare('UPDATE messages SET is_read = 1 WHERE group_id IS NULL AND sender_id = ? AND receiver_id = ? AND is_read = 0')
-        .run(peerId, userId);
+      await dbRun('UPDATE messages SET is_read = 1 WHERE group_id IS NULL AND sender_id = ? AND receiver_id = ? AND is_read = 0',
+        [peerId, userId]);
 
-      const rows = db.prepare(`
+      const rows = await dbAll(`
         SELECT m.*, u.name AS sender_name, u.username AS sender_username
         FROM messages m
         LEFT JOIN users u ON u.id = m.sender_id
@@ -1122,7 +1251,7 @@ const server = http.createServer(async (req, res) => {
             OR (m.is_sealed = 1 AND m.sender_id = 0 AND (m.receiver_id = ? OR m.receiver_id = ?))
           )
         ORDER BY m.id ASC
-      `).all(userId, peerId, peerId, userId, userId, peerId);
+      `, [userId, peerId, peerId, userId, userId, peerId]);
 
       const peerTypingTs = typingStatus.get(`${peerId}->user:${userId}`) || 0;
       const typingUser = now - peerTypingTs < 3500 ? 'typing' : null;
@@ -1135,9 +1264,9 @@ const server = http.createServer(async (req, res) => {
       if (!senderId || !ciphertext || !iv) return sendJson(res, 400, { error: 'Incomplete encrypted payload' });
 
       if (groupId) {
-        if (!isGroupMember(groupId, senderId)) return sendJson(res, 403, { error: 'Not a group member.' });
+        if (!(await isGroupMember(groupId, senderId))) return sendJson(res, 403, { error: 'Not a group member.' });
       } else {
-        if (!receiverId || !areFriends(senderId, receiverId)) {
+        if (!receiverId || !(await areFriends(senderId, receiverId))) {
           return sendJson(res, 403, { error: 'Sirf accepted friends ko hi message bhej sakte hain.' });
         }
       }
@@ -1145,10 +1274,10 @@ const server = http.createServer(async (req, res) => {
       const storedSenderId = !groupId && isSealed ? 0 : senderId;
       const expiresAt = ttlMs && Number(ttlMs) > 0 ? Date.now() + Number(ttlMs) : null;
 
-      const info = db.prepare(`
+      const info = await dbRun(`
         INSERT INTO messages (sender_id, receiver_id, group_id, msg_type, ciphertext, iv, file_name, reply_to_id, is_view_once, is_sealed, expires_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(
+      `, [
         storedSenderId,
         groupId ? 0 : receiverId,
         groupId || null,
@@ -1160,25 +1289,25 @@ const server = http.createServer(async (req, res) => {
         isViewOnce ? 1 : 0,
         !groupId && isSealed ? 1 : 0,
         expiresAt
-      );
+      ], true);
 
       return sendJson(res, 200, { success: true, id: Number(info.lastInsertRowid) });
     }
 
     if (req.method === 'POST' && url.pathname === '/api/messages/edit') {
       const { messageId, userId, ciphertext, iv } = await readJsonBody(req);
-      const msg = db.prepare('SELECT sender_id, is_sealed FROM messages WHERE id = ?').get(messageId);
+      const msg = await dbGet('SELECT sender_id, is_sealed FROM messages WHERE id = ?', [messageId]);
       if (!msg) return sendJson(res, 404, { error: 'Message not found' });
       if (!msg.is_sealed && Number(msg.sender_id) !== Number(userId)) {
         return sendJson(res, 403, { error: 'Sirf aap apne bheje messages edit kar sakte hain.' });
       }
-      db.prepare('UPDATE messages SET ciphertext = ?, iv = ?, is_edited = 1 WHERE id = ?').run(ciphertext, iv, messageId);
+      await dbRun('UPDATE messages SET ciphertext = ?, iv = ?, is_edited = 1 WHERE id = ?', [ciphertext, iv, messageId]);
       return sendJson(res, 200, { success: true });
     }
 
     if (req.method === 'POST' && url.pathname === '/api/messages/vote') {
       const { messageId, userId, optionIndex } = await readJsonBody(req);
-      const msg = db.prepare('SELECT poll_votes FROM messages WHERE id = ?').get(messageId);
+      const msg = await dbGet('SELECT poll_votes FROM messages WHERE id = ?', [messageId]);
       if (!msg) return sendJson(res, 404, { error: 'Poll not found' });
 
       let votes = {};
@@ -1197,23 +1326,23 @@ const server = http.createServer(async (req, res) => {
         votes[optKey].push(uid);
       }
 
-      db.prepare('UPDATE messages SET poll_votes = ? WHERE id = ?').run(JSON.stringify(votes), messageId);
+      await dbRun('UPDATE messages SET poll_votes = ? WHERE id = ?', [JSON.stringify(votes), messageId]);
       return sendJson(res, 200, { success: true, votes });
     }
 
     if (req.method === 'POST' && url.pathname === '/api/messages/view-once') {
       const { messageId, userId } = await readJsonBody(req);
-      const msg = db.prepare('SELECT * FROM messages WHERE id = ?').get(messageId);
+      const msg = await dbGet('SELECT * FROM messages WHERE id = ?', [messageId]);
       if (!msg) return sendJson(res, 404, { error: 'Message already destroyed' });
       if (Number(msg.receiver_id) === Number(userId) || msg.group_id) {
-        db.prepare("UPDATE messages SET ciphertext = '', is_deleted = 1 WHERE id = ?").run(messageId);
+        await dbRun("UPDATE messages SET ciphertext = '', is_deleted = 1 WHERE id = ?", [messageId]);
       }
       return sendJson(res, 200, { success: true });
     }
 
     if (req.method === 'POST' && url.pathname === '/api/messages/react') {
       const { messageId, userId, emoji } = await readJsonBody(req);
-      const msg = db.prepare('SELECT reactions FROM messages WHERE id = ?').get(messageId);
+      const msg = await dbGet('SELECT reactions FROM messages WHERE id = ?', [messageId]);
       if (!msg) return sendJson(res, 404, { error: 'Message not found' });
 
       let reactions = {};
@@ -1228,18 +1357,18 @@ const server = http.createServer(async (req, res) => {
         reactions[emoji].push(Number(userId));
       }
 
-      db.prepare('UPDATE messages SET reactions = ? WHERE id = ?').run(JSON.stringify(reactions), messageId);
+      await dbRun('UPDATE messages SET reactions = ? WHERE id = ?', [JSON.stringify(reactions), messageId]);
       return sendJson(res, 200, { success: true, reactions });
     }
 
     if (req.method === 'POST' && url.pathname === '/api/messages/delete') {
       const { messageId, userId } = await readJsonBody(req);
-      const msg = db.prepare('SELECT sender_id, is_sealed FROM messages WHERE id = ?').get(messageId);
+      const msg = await dbGet('SELECT sender_id, is_sealed FROM messages WHERE id = ?', [messageId]);
       if (!msg) return sendJson(res, 404, { error: 'Message not found' });
       if (!msg.is_sealed && Number(msg.sender_id) !== Number(userId)) {
         return sendJson(res, 403, { error: 'Sirf aap apne bheje gaye messages delete kar sakte hain.' });
       }
-      db.prepare("UPDATE messages SET ciphertext = '', is_deleted = 1, reactions = '{}' WHERE id = ?").run(messageId);
+      await dbRun("UPDATE messages SET ciphertext = '', is_deleted = 1, reactions = '{}' WHERE id = ?", [messageId]);
       return sendJson(res, 200, { success: true });
     }
 
@@ -1310,10 +1439,14 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`\nCipherChat Ultimate Server running at: http://localhost:${PORT}`);
-  console.log(`Configured Administrator Email: ${ADMIN_EMAIL}`);
-
-});
-
-
+initDatabase()
+  .then(() => {
+    server.listen(PORT, () => {
+      console.log(`\nCipherChat Ultimate Server running at: http://localhost:${PORT}`);
+      console.log(`Configured Administrator Email: ${ADMIN_EMAIL}`);
+    });
+  })
+  .catch((err) => {
+    console.error('Failed to initialize database:', err);
+    process.exit(1);
+  });
