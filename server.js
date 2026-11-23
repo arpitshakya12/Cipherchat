@@ -276,7 +276,48 @@ function isGroupMember(groupId, userId) {
   return Boolean(row);
 }
 
-function sendGmailOtp(toEmail, otp, purposeLabel) {
+async function sendGmailOtp(toEmail, otp, purposeLabel) {
+  if (!SENDER_EMAIL) {
+    throw new Error('Render Environment me SENDER_EMAIL missing hai.');
+  }
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:440px;margin:auto;padding:24px;border:1px solid #e2e8f0;border-radius:12px;">
+      <h2 style="color:#0f172a;margin-top:0;">CipherChat ${purposeLabel}</h2>
+      <p style="color:#475569;">Aapka 6-digit verification OTP (5 minute ke liye valid):</p>
+      <div style="font-size:32px;font-weight:bold;letter-spacing:6px;background:#f1f5f9;padding:16px;text-align:center;border-radius:8px;color:#059669;">
+        ${otp}
+      </div>
+    </div>`;
+
+  // Cloud / Render ke liye Brevo HTTPS API (Port 443)
+  if (BREVO_API_KEY) {
+    const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': BREVO_API_KEY,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        sender: { name: 'CipherChat Security', email: SENDER_EMAIL },
+        to: [{ email: toEmail }],
+        subject: `${otp} is your CipherChat ${purposeLabel} OTP`,
+        htmlContent: html
+      })
+    });
+    if (!resp.ok) {
+      const errText = await resp.text();
+      throw new Error(`Brevo API Error (${resp.status}): ${errText}`);
+    }
+    return;
+  }
+
+  // Local PC ke liye Gmail SMTP Fallback
+  if (!SENDER_APP_PASSWORD) {
+    throw new Error('BREVO_API_KEY ya SENDER_APP_PASSWORD set karein.');
+  }
+
   return new Promise((resolve, reject) => {
     const cleanPass = SENDER_APP_PASSWORD.replace(/\s+/g, '');
     const socket = tls.connect(465, 'smtp.gmail.com', { rejectUnauthorized: true });
@@ -291,26 +332,16 @@ function sendGmailOtp(toEmail, otp, purposeLabel) {
       () => `MAIL FROM:<${SENDER_EMAIL}>\r\n`,
       () => `RCPT TO:<${toEmail}>\r\n`,
       () => `DATA\r\n`,
-      () => {
-        const html = `
-          <div style="font-family:sans-serif;max-width:440px;margin:auto;padding:24px;border:1px solid #e2e8f0;border-radius:12px;">
-            <h2 style="color:#0f172a;margin-top:0;">CipherChat ${purposeLabel}</h2>
-            <p style="color:#475569;">Aapka 6-digit verification OTP (5 minute ke liye valid):</p>
-            <div style="font-size:32px;font-weight:bold;letter-spacing:6px;background:#f1f5f9;padding:16px;text-align:center;border-radius:8px;color:#059669;">
-              ${otp}
-            </div>
-          </div>`;
-        return [
-          `From: "CipherChat Security" <${SENDER_EMAIL}>`,
-          `To: <${toEmail}>`,
-          `Subject: ${otp} is your CipherChat ${purposeLabel} OTP`,
-          `MIME-Version: 1.0`,
-          `Content-Type: text/html; charset=UTF-8`,
-          ``,
-          html,
-          `.`
-        ].join('\r\n') + '\r\n';
-      },
+      () => [
+        `From: "CipherChat Security" <${SENDER_EMAIL}>`,
+        `To: <${toEmail}>`,
+        `Subject: ${otp} is your CipherChat ${purposeLabel} OTP`,
+        `MIME-Version: 1.0`,
+        `Content-Type: text/html; charset=UTF-8`,
+        ``,
+        html,
+        `.`
+      ].join('\r\n') + '\r\n',
       () => `QUIT\r\n`
     ];
 
@@ -319,7 +350,6 @@ function sendGmailOtp(toEmail, otp, purposeLabel) {
       buffer += chunk;
       const lines = buffer.split('\r\n');
       buffer = lines.pop();
-
       for (const line of lines) {
         if (!line) continue;
         if (/^\d{3} /.test(line)) {
@@ -338,7 +368,6 @@ function sendGmailOtp(toEmail, otp, purposeLabel) {
         }
       }
     });
-
     socket.on('error', (err) => reject(err));
   });
 }
@@ -1254,4 +1283,5 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log(`\nCipherChat Ultimate Server running at: http://localhost:${PORT}`);
   console.log(`Configured Administrator Email: ${ADMIN_EMAIL}`);
+
 });
