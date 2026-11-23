@@ -1156,6 +1156,26 @@ const server = http.createServer(async (req, res) => {
         WHERE user_id = ?
       `, [userId]);
 
+      const storageRow = await dbGet(`
+        SELECT COALESCE(SUM(LENGTH(ciphertext)), 0) AS used_bytes
+        FROM messages
+        WHERE sender_id = ? OR receiver_id = ?
+      `, [userId, userId]);
+      const storageUsedBytes = Number(storageRow?.used_bytes || 0);
+
+      return sendJson(res, 200, {
+        friends,
+        incoming,
+        outgoing,
+        groups,
+        blocked,
+        sessions,
+        deletionRequest,
+        storageUsedBytes,
+        isAdmin: isAdminUser(userRow)
+      });
+      
+
       return sendJson(res, 200, {
         friends,
         incoming,
