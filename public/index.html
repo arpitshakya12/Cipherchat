@@ -57,7 +57,7 @@
     .toast-animate { animation: toastSlide 0.22s ease-out forwards; }
   </style>
 </head>
-<body class="ambient-bg h-screen overflow-hidden antialiased selection:bg-emerald-500/30 selection:text-emerald-200">
+<body style="height: 100vh; height: 100dvh;" class="ambient-bg overflow-hidden antialiased selection:bg-emerald-500/30 selection:text-emerald-200">
 
   <!-- GLOBAL TOAST NOTIFICATION CONTAINER -->
   <div id="toastContainer" class="fixed top-4 right-4 z-[100] flex flex-col gap-2 max-w-xs sm:max-w-sm pointer-events-none"></div>
@@ -366,7 +366,7 @@
     <!-- RIGHT CHAT CANVAS (Hidden on mobile until a chat is selected) -->
     <main id="chatMainPanel" class="hidden md:flex flex-1 flex-col chat-pattern relative min-w-0">
       <!-- Top Glass Header -->
-      <header class="h-16 glass-panel border-x-0 border-t-0 px-3 sm:px-5 flex items-center justify-between gap-2 z-10">
+      <header class="h-14 sm:h-16 shrink-0 glass-panel border-x-0 border-t-0 px-2.5 sm:px-5 flex items-center justify-between gap-1.5 sm:gap-2 z-10">
         <div class="flex items-center gap-2.5 min-w-0">
           <!-- Mobile Back Button -->
           <button onclick="closeMobileChat()" class="md:hidden p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 text-xs font-bold shrink-0">
@@ -408,7 +408,7 @@
       </header>
 
       <!-- Messages Feed / Helpful Welcome Dashboard -->
-      <div id="messagesBox" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3">
+      <div id="messagesBox" class="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-3">
         <div class="h-full flex items-center justify-center">
           <div class="max-w-lg w-full glass-panel rounded-3xl p-6 sm:p-8 shadow-2xl">
             <div class="flex items-center gap-3.5 mb-4">
@@ -455,7 +455,7 @@
       </div>
 
       <!-- Clean Modern Composer Dock -->
-      <div id="composerBar" class="hidden p-3 sm:p-3.5 pt-1 relative">
+      <div id="composerBar" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom));" class="hidden shrink-0 p-2.5 sm:p-3.5 pt-1 relative z-20">
         <!-- Popover 1: Power Tools Menu (+) -->
         <div id="composerToolsMenu" class="hidden absolute bottom-20 left-3 sm:left-4 w-72 glass-panel border-white/15 rounded-2xl p-2.5 shadow-2xl z-30 space-y-1">
           <label class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/10 cursor-pointer transition">
@@ -3300,3 +3300,4 @@
 </body>
 
 </html>
+
