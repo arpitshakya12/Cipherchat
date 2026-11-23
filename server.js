@@ -586,6 +586,35 @@ const server = http.createServer(async (req, res) => {
         sessionToken
       });
     }
+    // Auto-restore persistent login session when app reopens
+    if (req.method === 'POST' && url.pathname === '/api/session/restore') {
+      const { userId, sessionToken } = await readJsonBody(req);
+      if (!userId || !sessionToken) return sendJson(res, 400, { error: 'Missing session data' });
+
+      const sess = db.prepare('SELECT id FROM sessions WHERE user_id = ? AND token = ?').get(userId, sessionToken);
+      if (!sess) return sendJson(res, 401, { error: 'Session expired or revoked' });
+
+      const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+      if (!user) return sendJson(res, 401, { error: 'User account not found' });
+
+      db.prepare('UPDATE sessions SET last_active = ? WHERE id = ?').run(Date.now(), sess.id);
+      db.prepare('UPDATE users SET last_seen = ? WHERE id = ?').run(Date.now(), user.id);
+
+      return sendJson(res, 200, {
+        success: true,
+        user: { ...user, is_admin: isAdminUser(user) },
+        sessionToken
+      });
+    }
+
+    // Explicit Logout (removes session from server)
+    if (req.method === 'POST' && url.pathname === '/api/logout') {
+      const { userId, sessionToken } = await readJsonBody(req);
+      if (userId && sessionToken) {
+        db.prepare('DELETE FROM sessions WHERE user_id = ? AND token = ?').run(userId, sessionToken);
+      }
+      return sendJson(res, 200, { success: true });
+    }
 
     if (req.method === 'POST' && url.pathname === '/api/keys/backup') {
       const { userId, publicKey, encryptedPrivKey, pinSalt, pinIv } = await readJsonBody(req);
@@ -1286,4 +1315,5 @@ server.listen(PORT, () => {
   console.log(`Configured Administrator Email: ${ADMIN_EMAIL}`);
 
 });
+
 
