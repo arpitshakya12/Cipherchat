@@ -11,6 +11,7 @@ const { DatabaseSync } = require('node:sqlite');
 // ==========================================
 const SENDER_EMAIL = process.env.SENDER_EMAIL || '';
 const SENDER_APP_PASSWORD = process.env.SENDER_APP_PASSWORD || '';
+const BREVO_API_KEY = process.env.BREVO_API_KEY || '';
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
 const PORT = process.env.PORT || 3000;
 
@@ -1285,3 +1286,4 @@ server.listen(PORT, () => {
   console.log(`Configured Administrator Email: ${ADMIN_EMAIL}`);
 
 });
+
