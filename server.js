@@ -1068,7 +1068,7 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, { success: true, groupId });
     }
 
-    // 11. SYNC DASHBOARD & VALIDATE ACCOUNT/SESSION
+    // 11. SYNC DASHBOARD, STORAGE USAGE & VALIDATE ACCOUNT/SESSION
     if (req.method === 'GET' && url.pathname === '/api/dashboard') {
       const userId = Number(url.searchParams.get('userId') || 0);
       const sessionToken = url.searchParams.get('sessionToken') || '';
@@ -1172,18 +1172,6 @@ const server = http.createServer(async (req, res) => {
         sessions,
         deletionRequest,
         storageUsedBytes,
-        isAdmin: isAdminUser(userRow)
-      });
-      
-
-      return sendJson(res, 200, {
-        friends,
-        incoming,
-        outgoing,
-        groups,
-        blocked,
-        sessions,
-        deletionRequest,
         isAdmin: isAdminUser(userRow)
       });
     }
