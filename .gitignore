@@ -1,0 +1,4 @@
+node_modules
+cipherchat.db
+cipherchat.db-wal
+cipherchat.db-shm
