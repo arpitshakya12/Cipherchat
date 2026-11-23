@@ -4,6 +4,9 @@
   "engines": {
     "node": ">=22.5.0"
   },
+  "dependencies": {
+    "pg": "^8.13.1"
+  },
   "scripts": {
     "start": "node server.js"
   }
