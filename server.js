@@ -16,7 +16,7 @@ const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
 const PORT = process.env.PORT || 3000;
 
 // ==========================================
-// 2. UNIFIED DATABASE LAYER (CLOUD POSTGRES + SQLITE FALLBACK)
+// 2. UNIFIED DATABASE LAYER (NEON POSTGRES + LOCAL SQLITE)
 // ==========================================
 let pgPool = null;
 let sqliteDb = null;
@@ -54,251 +54,241 @@ async function dbRun(sql, params = [], returnId = false) {
 
 async function initDatabase() {
   if (DATABASE_URL) {
-    try {
-      const { Pool } = require('pg');
-      pgPool = new Pool({
-        connectionString: DATABASE_URL,
-        ssl: { rejectUnauthorized: false },
-        family: 4
-      });
+    const { Pool } = require('pg');
+    pgPool = new Pool({
+      connectionString: DATABASE_URL,
+      ssl: { rejectUnauthorized: false }
+    });
 
-      await pgPool.query(`
-        CREATE TABLE IF NOT EXISTS users (
-          id SERIAL PRIMARY KEY,
-          name TEXT NOT NULL,
-          username TEXT UNIQUE NOT NULL,
-          phone TEXT UNIQUE NOT NULL,
-          email TEXT UNIQUE NOT NULL,
-          public_key TEXT,
-          encrypted_priv_key TEXT DEFAULT '',
-          pin_salt TEXT DEFAULT '',
-          pin_iv TEXT DEFAULT '',
-          bio TEXT DEFAULT 'Hey there! Using CipherChat E2EE.',
-          last_seen BIGINT DEFAULT 0,
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        );
+    await pgPool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        username TEXT UNIQUE NOT NULL,
+        phone TEXT UNIQUE NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        public_key TEXT,
+        encrypted_priv_key TEXT DEFAULT '',
+        pin_salt TEXT DEFAULT '',
+        pin_iv TEXT DEFAULT '',
+        bio TEXT DEFAULT 'Hey there! Using CipherChat E2EE.',
+        last_seen BIGINT DEFAULT 0,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
 
-        CREATE TABLE IF NOT EXISTS sessions (
-          id SERIAL PRIMARY KEY,
-          user_id INTEGER NOT NULL,
-          token TEXT UNIQUE NOT NULL,
-          device_name TEXT NOT NULL,
-          last_active BIGINT NOT NULL,
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        );
+      CREATE TABLE IF NOT EXISTS sessions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        token TEXT UNIQUE NOT NULL,
+        device_name TEXT NOT NULL,
+        last_active BIGINT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
 
-        CREATE TABLE IF NOT EXISTS otps (
-          email TEXT PRIMARY KEY,
-          otp TEXT NOT NULL,
-          purpose TEXT NOT NULL,
-          pending_data TEXT,
-          expires_at BIGINT NOT NULL
-        );
+      CREATE TABLE IF NOT EXISTS otps (
+        email TEXT PRIMARY KEY,
+        otp TEXT NOT NULL,
+        purpose TEXT NOT NULL,
+        pending_data TEXT,
+        expires_at BIGINT NOT NULL
+      );
 
-        CREATE TABLE IF NOT EXISTS friend_requests (
-          id SERIAL PRIMARY KEY,
-          sender_id INTEGER NOT NULL,
-          receiver_id INTEGER NOT NULL,
-          status TEXT NOT NULL DEFAULT 'pending',
-          created_at TIMESTAMPTZ DEFAULT NOW(),
-          UNIQUE(sender_id, receiver_id)
-        );
+      CREATE TABLE IF NOT EXISTS friend_requests (
+        id SERIAL PRIMARY KEY,
+        sender_id INTEGER NOT NULL,
+        receiver_id INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(sender_id, receiver_id)
+      );
 
-        CREATE TABLE IF NOT EXISTS invite_tokens (
-          token TEXT PRIMARY KEY,
-          creator_id INTEGER NOT NULL,
-          expires_at BIGINT NOT NULL,
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        );
+      CREATE TABLE IF NOT EXISTS invite_tokens (
+        token TEXT PRIMARY KEY,
+        creator_id INTEGER NOT NULL,
+        expires_at BIGINT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
 
-        CREATE TABLE IF NOT EXISTS blocks (
-          blocker_id INTEGER NOT NULL,
-          blocked_id INTEGER NOT NULL,
-          created_at TIMESTAMPTZ DEFAULT NOW(),
-          PRIMARY KEY (blocker_id, blocked_id)
-        );
+      CREATE TABLE IF NOT EXISTS blocks (
+        blocker_id INTEGER NOT NULL,
+        blocked_id INTEGER NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        PRIMARY KEY (blocker_id, blocked_id)
+      );
 
-        CREATE TABLE IF NOT EXISTS groups (
-          id SERIAL PRIMARY KEY,
-          name TEXT NOT NULL,
-          created_by INTEGER NOT NULL,
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        );
+      CREATE TABLE IF NOT EXISTS groups (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        created_by INTEGER NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
 
-        CREATE TABLE IF NOT EXISTS group_members (
-          group_id INTEGER NOT NULL,
-          user_id INTEGER NOT NULL,
-          encrypted_group_key TEXT NOT NULL,
-          key_iv TEXT NOT NULL,
-          added_by INTEGER NOT NULL,
-          PRIMARY KEY (group_id, user_id)
-        );
+      CREATE TABLE IF NOT EXISTS group_members (
+        group_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        encrypted_group_key TEXT NOT NULL,
+        key_iv TEXT NOT NULL,
+        added_by INTEGER NOT NULL,
+        PRIMARY KEY (group_id, user_id)
+      );
 
-        CREATE TABLE IF NOT EXISTS messages (
-          id SERIAL PRIMARY KEY,
-          sender_id INTEGER NOT NULL,
-          receiver_id INTEGER NOT NULL,
-          group_id INTEGER DEFAULT NULL,
-          msg_type TEXT NOT NULL,
-          ciphertext TEXT NOT NULL,
-          iv TEXT NOT NULL,
-          file_name TEXT,
-          reply_to_id INTEGER DEFAULT NULL,
-          is_view_once INTEGER DEFAULT 0,
-          is_sealed INTEGER DEFAULT 0,
-          is_edited INTEGER DEFAULT 0,
-          poll_votes TEXT DEFAULT '{}',
-          expires_at BIGINT DEFAULT NULL,
-          is_read INTEGER DEFAULT 0,
-          reactions TEXT DEFAULT '{}',
-          is_deleted INTEGER DEFAULT 0,
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        );
+      CREATE TABLE IF NOT EXISTS messages (
+        id SERIAL PRIMARY KEY,
+        sender_id INTEGER NOT NULL,
+        receiver_id INTEGER NOT NULL,
+        group_id INTEGER DEFAULT NULL,
+        msg_type TEXT NOT NULL,
+        ciphertext TEXT NOT NULL,
+        iv TEXT NOT NULL,
+        file_name TEXT,
+        reply_to_id INTEGER DEFAULT NULL,
+        is_view_once INTEGER DEFAULT 0,
+        is_sealed INTEGER DEFAULT 0,
+        is_edited INTEGER DEFAULT 0,
+        poll_votes TEXT DEFAULT '{}',
+        expires_at BIGINT DEFAULT NULL,
+        is_read INTEGER DEFAULT 0,
+        reactions TEXT DEFAULT '{}',
+        is_deleted INTEGER DEFAULT 0,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
 
-        CREATE TABLE IF NOT EXISTS deletion_requests (
-          id SERIAL PRIMARY KEY,
-          user_id INTEGER UNIQUE NOT NULL,
-          reason TEXT DEFAULT '',
-          accepted_terms INTEGER NOT NULL DEFAULT 1,
-          terms_accepted_at TEXT NOT NULL,
-          device_info TEXT DEFAULT '',
-          status TEXT NOT NULL DEFAULT 'pending',
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        );
+      CREATE TABLE IF NOT EXISTS deletion_requests (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER UNIQUE NOT NULL,
+        reason TEXT DEFAULT '',
+        accepted_terms INTEGER NOT NULL DEFAULT 1,
+        terms_accepted_at TEXT NOT NULL,
+        device_info TEXT DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
 
-        CREATE TABLE IF NOT EXISTS deletion_audit_logs (
-          id SERIAL PRIMARY KEY,
-          user_name TEXT NOT NULL,
-          username TEXT NOT NULL,
-          phone TEXT NOT NULL,
-          email TEXT NOT NULL,
-          reason TEXT DEFAULT '',
-          terms_accepted_at TEXT NOT NULL,
-          approved_by TEXT NOT NULL,
-          deleted_at TIMESTAMPTZ DEFAULT NOW()
-        );
-      `);
-      console.log('Connected to Permanent Cloud PostgreSQL Database.');
-      return;
-    } catch (pgErr) {
-      console.error('Cloud PostgreSQL Error (falling back to local SQLite):', pgErr.message);
-      if (pgPool) {
-        try { await pgPool.end(); } catch {}
-        pgPool = null;
-      }
-    }
+      CREATE TABLE IF NOT EXISTS deletion_audit_logs (
+        id SERIAL PRIMARY KEY,
+        user_name TEXT NOT NULL,
+        username TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        email TEXT NOT NULL,
+        reason TEXT DEFAULT '',
+        terms_accepted_at TEXT NOT NULL,
+        approved_by TEXT NOT NULL,
+        deleted_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+    console.log('Connected to Permanent Cloud PostgreSQL Database (Neon).');
+  } else {
+    const { DatabaseSync } = require('node:sqlite');
+    sqliteDb = new DatabaseSync(path.join(__dirname, 'cipherchat.db'));
+    sqliteDb.exec('PRAGMA journal_mode = WAL;');
+    sqliteDb.exec(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        username TEXT UNIQUE NOT NULL,
+        phone TEXT UNIQUE NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        public_key TEXT,
+        encrypted_priv_key TEXT DEFAULT '',
+        pin_salt TEXT DEFAULT '',
+        pin_iv TEXT DEFAULT '',
+        bio TEXT DEFAULT 'Hey there! Using CipherChat E2EE.',
+        last_seen INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        token TEXT UNIQUE NOT NULL,
+        device_name TEXT NOT NULL,
+        last_active INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS otps (
+        email TEXT PRIMARY KEY,
+        otp TEXT NOT NULL,
+        purpose TEXT NOT NULL,
+        pending_data TEXT,
+        expires_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS friend_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sender_id INTEGER NOT NULL,
+        receiver_id INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(sender_id, receiver_id)
+      );
+      CREATE TABLE IF NOT EXISTS invite_tokens (
+        token TEXT PRIMARY KEY,
+        creator_id INTEGER NOT NULL,
+        expires_at INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS blocks (
+        blocker_id INTEGER NOT NULL,
+        blocked_id INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (blocker_id, blocked_id)
+      );
+      CREATE TABLE IF NOT EXISTS groups (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        created_by INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS group_members (
+        group_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        encrypted_group_key TEXT NOT NULL,
+        key_iv TEXT NOT NULL,
+        added_by INTEGER NOT NULL,
+        PRIMARY KEY (group_id, user_id)
+      );
+      CREATE TABLE IF NOT EXISTS messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sender_id INTEGER NOT NULL,
+        receiver_id INTEGER NOT NULL,
+        group_id INTEGER DEFAULT NULL,
+        msg_type TEXT NOT NULL,
+        ciphertext TEXT NOT NULL,
+        iv TEXT NOT NULL,
+        file_name TEXT,
+        reply_to_id INTEGER DEFAULT NULL,
+        is_view_once INTEGER DEFAULT 0,
+        is_sealed INTEGER DEFAULT 0,
+        is_edited INTEGER DEFAULT 0,
+        poll_votes TEXT DEFAULT '{}',
+        expires_at INTEGER DEFAULT NULL,
+        is_read INTEGER DEFAULT 0,
+        reactions TEXT DEFAULT '{}',
+        is_deleted INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS deletion_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER UNIQUE NOT NULL,
+        reason TEXT DEFAULT '',
+        accepted_terms INTEGER NOT NULL DEFAULT 1,
+        terms_accepted_at TEXT NOT NULL,
+        device_info TEXT DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS deletion_audit_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_name TEXT NOT NULL,
+        username TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        email TEXT NOT NULL,
+        reason TEXT DEFAULT '',
+        terms_accepted_at TEXT NOT NULL,
+        approved_by TEXT NOT NULL,
+        deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Connected to Local SQLite Database (cipherchat.db).');
   }
-
-  const { DatabaseSync } = require('node:sqlite');
-  sqliteDb = new DatabaseSync(path.join(__dirname, 'cipherchat.db'));
-  sqliteDb.exec('PRAGMA journal_mode = WAL;');
-  sqliteDb.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      username TEXT UNIQUE NOT NULL,
-      phone TEXT UNIQUE NOT NULL,
-      email TEXT UNIQUE NOT NULL,
-      public_key TEXT,
-      encrypted_priv_key TEXT DEFAULT '',
-      pin_salt TEXT DEFAULT '',
-      pin_iv TEXT DEFAULT '',
-      bio TEXT DEFAULT 'Hey there! Using CipherChat E2EE.',
-      last_seen INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-    CREATE TABLE IF NOT EXISTS sessions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      token TEXT UNIQUE NOT NULL,
-      device_name TEXT NOT NULL,
-      last_active INTEGER NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-    CREATE TABLE IF NOT EXISTS otps (
-      email TEXT PRIMARY KEY,
-      otp TEXT NOT NULL,
-      purpose TEXT NOT NULL,
-      pending_data TEXT,
-      expires_at INTEGER NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS friend_requests (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      sender_id INTEGER NOT NULL,
-      receiver_id INTEGER NOT NULL,
-      status TEXT NOT NULL DEFAULT 'pending',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(sender_id, receiver_id)
-    );
-    CREATE TABLE IF NOT EXISTS invite_tokens (
-      token TEXT PRIMARY KEY,
-      creator_id INTEGER NOT NULL,
-      expires_at INTEGER NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-    CREATE TABLE IF NOT EXISTS blocks (
-      blocker_id INTEGER NOT NULL,
-      blocked_id INTEGER NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      PRIMARY KEY (blocker_id, blocked_id)
-    );
-    CREATE TABLE IF NOT EXISTS groups (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      created_by INTEGER NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-    CREATE TABLE IF NOT EXISTS group_members (
-      group_id INTEGER NOT NULL,
-      user_id INTEGER NOT NULL,
-      encrypted_group_key TEXT NOT NULL,
-      key_iv TEXT NOT NULL,
-      added_by INTEGER NOT NULL,
-      PRIMARY KEY (group_id, user_id)
-    );
-    CREATE TABLE IF NOT EXISTS messages (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      sender_id INTEGER NOT NULL,
-      receiver_id INTEGER NOT NULL,
-      group_id INTEGER DEFAULT NULL,
-      msg_type TEXT NOT NULL,
-      ciphertext TEXT NOT NULL,
-      iv TEXT NOT NULL,
-      file_name TEXT,
-      reply_to_id INTEGER DEFAULT NULL,
-      is_view_once INTEGER DEFAULT 0,
-      is_sealed INTEGER DEFAULT 0,
-      is_edited INTEGER DEFAULT 0,
-      poll_votes TEXT DEFAULT '{}',
-      expires_at INTEGER DEFAULT NULL,
-      is_read INTEGER DEFAULT 0,
-      reactions TEXT DEFAULT '{}',
-      is_deleted INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-    CREATE TABLE IF NOT EXISTS deletion_requests (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER UNIQUE NOT NULL,
-      reason TEXT DEFAULT '',
-      accepted_terms INTEGER NOT NULL DEFAULT 1,
-      terms_accepted_at TEXT NOT NULL,
-      device_info TEXT DEFAULT '',
-      status TEXT NOT NULL DEFAULT 'pending',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-    CREATE TABLE IF NOT EXISTS deletion_audit_logs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_name TEXT NOT NULL,
-      username TEXT NOT NULL,
-      phone TEXT NOT NULL,
-      email TEXT NOT NULL,
-      reason TEXT DEFAULT '',
-      terms_accepted_at TEXT NOT NULL,
-      approved_by TEXT NOT NULL,
-      deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
-  console.log('Connected to Local SQLite Database (cipherchat.db).');
 }
 
 const typingStatus = new Map();
@@ -308,7 +298,7 @@ let signalSeq = 1;
 setInterval(async () => {
   const now = Date.now();
   try {
-    await dbRun('DELETE FROM messages WHERE is_deleted = 1 OR (expires_at IS NOT NULL AND expires_at <= ?)', [now]);
+    await dbRun('DELETE FROM messages WHERE expires_at IS NOT NULL AND expires_at <= ?', [now]);
     await dbRun('DELETE FROM invite_tokens WHERE expires_at <= ?', [now]);
   } catch {}
   for (const [uid, queue] of callSignals.entries()) {
@@ -1228,7 +1218,7 @@ const server = http.createServer(async (req, res) => {
       const groupId = Number(url.searchParams.get('groupId') || 0);
       const now = Date.now();
 
-      await dbRun('DELETE FROM messages WHERE is_deleted = 1 OR (expires_at IS NOT NULL AND expires_at <= ?)', [now]);
+      await dbRun('DELETE FROM messages WHERE expires_at IS NOT NULL AND expires_at <= ?', [now]);
 
       if (groupId) {
         if (!(await isGroupMember(groupId, userId))) return sendJson(res, 403, { error: 'Not a group member' });
@@ -1353,7 +1343,7 @@ const server = http.createServer(async (req, res) => {
       const msg = await dbGet('SELECT * FROM messages WHERE id = ?', [messageId]);
       if (!msg) return sendJson(res, 404, { error: 'Message already destroyed' });
       if (Number(msg.receiver_id) === Number(userId) || msg.group_id) {
-        await dbRun('DELETE FROM messages WHERE id = ?', [messageId]);
+        await dbRun("UPDATE messages SET ciphertext = '', is_deleted = 1 WHERE id = ?", [messageId]);
       }
       return sendJson(res, 200, { success: true });
     }
@@ -1386,7 +1376,7 @@ const server = http.createServer(async (req, res) => {
       if (!msg.is_sealed && Number(msg.sender_id) !== Number(userId)) {
         return sendJson(res, 403, { error: 'Sirf aap apne bheje gaye messages delete kar sakte hain.' });
       }
-      await dbRun('DELETE FROM messages WHERE id = ?', [messageId]);
+      await dbRun("UPDATE messages SET ciphertext = '', is_deleted = 1, reactions = '{}' WHERE id = ?", [messageId]);
       return sendJson(res, 200, { success: true });
     }
 
