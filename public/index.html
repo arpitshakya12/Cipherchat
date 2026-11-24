@@ -12,29 +12,92 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    :root { --bg-obsidian: #050811; --panel-glass: rgba(12, 18, 32, 0.86); --border-subtle: rgba(255, 255, 255, 0.08); }
-    body { font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif; background-color: var(--bg-obsidian); color: #f1f5f9; }
+    :root {
+      --bg-obsidian: #050811;
+      --panel-glass: rgba(11, 17, 30, 0.86);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+    }
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-obsidian);
+      color: #f1f5f9;
+    }
     .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+    /* Ambient Animated Background */
+    @keyframes ambientShift {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
     .ambient-bg {
       background-color: #050811;
       background-image:
-        radial-gradient(at 10% 15%, rgba(16, 185, 129, 0.16) 0px, transparent 45%),
-        radial-gradient(at 90% 85%, rgba(6, 182, 212, 0.13) 0px, transparent 48%),
-        radial-gradient(at 50% 0%, rgba(99, 102, 241, 0.1) 0px, transparent 42%);
+        radial-gradient(at 12% 15%, rgba(16, 185, 129, 0.16) 0px, transparent 46%),
+        radial-gradient(at 88% 85%, rgba(6, 182, 212, 0.13) 0px, transparent 48%),
+        radial-gradient(at 50% 0%, rgba(99, 102, 241, 0.11) 0px, transparent 44%);
+      background-size: 140% 140%;
+      animation: ambientShift 18s ease infinite;
     }
+
     .chat-pattern {
       background-color: #060a14;
-      background-image: radial-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+      background-image: radial-gradient(rgba(148, 163, 184, 0.075) 1px, transparent 1px);
       background-size: 20px 20px;
     }
-    .glass-panel { background: var(--panel-glass); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); border: 1px solid var(--border-subtle); }
+
+    .glass-panel {
+      background: var(--panel-glass);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--border-subtle);
+    }
+
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.22); border-radius: 9999px; }
-    @keyframes msgPop { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
-    .msg-animate { animation: msgPop 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-    @keyframes toastSlide { from { opacity: 0; transform: translateX(24px) scale(0.95); } to { opacity: 1; transform: translateX(0) scale(1); } }
-    .toast-animate { animation: toastSlide 0.22s ease-out forwards; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(16, 185, 129, 0.5); }
+
+    /* Professional Directional Message Animations */
+    @keyframes msgInRight {
+      from { opacity: 0; transform: translateY(10px) translateX(8px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) translateX(0) scale(1); }
+    }
+    @keyframes msgInLeft {
+      from { opacity: 0; transform: translateY(10px) translateX(-8px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) translateX(0) scale(1); }
+    }
+    .msg-anim-mine { animation: msgInRight 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .msg-anim-peer { animation: msgInLeft 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+    /* Modal Entrance Animation */
+    @keyframes modalSpring {
+      from { opacity: 0; transform: scale(0.94) translateY(8px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .modal-card { animation: modalSpring 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+    /* Toast Slide Animation */
+    @keyframes toastSlide {
+      from { opacity: 0; transform: translateX(28px) scale(0.94); }
+      to { opacity: 1; transform: translateX(0) scale(1); }
+    }
+    .toast-animate { animation: toastSlide 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+    /* 3-Dot Typing Wave Animation */
+    @keyframes typingBounce {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.45; }
+      30% { transform: translateY(-4px); opacity: 1; }
+    }
+    .typing-dot { display: inline-block; width: 5px; height: 5px; border-radius: 9999px; background-color: #34d399; animation: typingBounce 1.2s infinite ease-in-out; }
+    .typing-dot:nth-child(2) { animation-delay: 0.16s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.32s; }
+
+    /* Circular SVG Progress Smooth Ring */
+    .progress-ring-circle {
+      transition: stroke-dashoffset 0.18s ease-out;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+    }
   </style>
 </head>
 <body style="height: 100vh; height: 100dvh;" class="ambient-bg overflow-hidden antialiased selection:bg-emerald-500/30 selection:text-emerald-200">
@@ -42,9 +105,11 @@
   <!-- GLOBAL TOAST NOTIFICATIONS -->
   <div id="toastContainer" class="fixed top-4 right-4 z-[100] flex flex-col gap-2 max-w-xs sm:max-w-sm pointer-events-none"></div>
 
-  <!-- 1. AUTHENTICATION SCREEN -->
+  <!-- ==========================================
+       1. AUTHENTICATION SCREEN
+  ========================================== -->
   <div id="authScreen" class="h-full flex items-center justify-center p-4 overflow-y-auto relative">
-    <div class="w-full max-w-[440px] glass-panel rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+    <div class="w-full max-w-[440px] glass-panel rounded-3xl p-6 sm:p-8 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.9)] relative overflow-hidden modal-card">
       <div class="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-emerald-400 to-transparent"></div>
 
       <div id="inviteLandingBanner" class="hidden mb-4 bg-indigo-500/15 border border-indigo-400/30 rounded-2xl p-3 text-xs text-indigo-200 flex items-center justify-between">
@@ -55,14 +120,18 @@
       <div class="flex items-center justify-between mb-6">
         <div class="flex items-center gap-3.5">
           <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 p-[1px] shadow-lg shadow-emerald-500/25">
-            <div class="w-full h-full bg-slate-950/90 rounded-[15px] flex items-center justify-center text-emerald-400 font-bold">🔒</div>
+            <div class="w-full h-full bg-slate-950/90 rounded-[15px] flex items-center justify-center text-emerald-400">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+              </svg>
+            </div>
           </div>
           <div>
             <h1 class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-emerald-300 bg-clip-text text-transparent">CipherChat</h1>
             <p class="text-[11px] text-slate-400 font-medium">Zero-Knowledge End-to-End Encrypted</p>
           </div>
         </div>
-        <button id="installAppBtn" onclick="triggerPwaInstall()" class="text-[11px] font-bold px-3 py-1.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 transition">
+        <button id="installAppBtn" onclick="triggerPwaInstall()" class="text-[11px] font-bold px-3 py-1.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 active:scale-95 transition">
           📲 Install App
         </button>
       </div>
@@ -75,10 +144,10 @@
       <div id="loginForm" class="space-y-4">
         <div>
           <label class="text-xs font-semibold text-slate-300 block mb-1.5">Email, Mobile Number, or @Username</label>
-          <input id="loginIdentifier" type="text" placeholder="arpit@gmail.com or 9876543210" onkeydown="if(event.key==='Enter') requestLoginOtp()" class="w-full bg-slate-950/75 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400" />
+          <input id="loginIdentifier" type="text" placeholder="arpit@gmail.com or 9876543210" onkeydown="if(event.key==='Enter') requestLoginOtp()" class="w-full bg-slate-950/75 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 transition" />
           <p class="text-[11px] text-slate-400 mt-2">OTP aapke linked Email address par automatically bheja jayega.</p>
         </div>
-        <button id="loginOtpBtn" onclick="requestLoginOtp()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold py-3 rounded-xl text-sm shadow-lg transition">
+        <button id="loginOtpBtn" onclick="requestLoginOtp()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold py-3 rounded-xl text-sm shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition">
           Send Verification OTP →
         </button>
       </div>
@@ -86,30 +155,30 @@
       <div id="signupForm" class="hidden space-y-3.5">
         <div>
           <label class="text-xs font-semibold text-slate-300 block mb-1">Full Name</label>
-          <input id="regName" type="text" placeholder="e.g. Arpit Shakya" class="w-full bg-slate-950/75 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400" />
+          <input id="regName" type="text" placeholder="e.g. Arpit Shakya" class="w-full bg-slate-950/75 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400 transition" />
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="text-xs font-semibold text-slate-300 block mb-1">Unique Username</label>
             <div class="relative">
               <span class="absolute left-3.5 top-2.5 text-emerald-400 text-sm font-mono">@</span>
-              <input id="regUsername" type="text" placeholder="arpit_01" class="w-full bg-slate-950/75 border border-white/10 rounded-xl pl-8 pr-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400" />
+              <input id="regUsername" type="text" placeholder="arpit_01" class="w-full bg-slate-950/75 border border-white/10 rounded-xl pl-8 pr-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400 transition" />
             </div>
           </div>
           <div>
             <label class="text-xs font-semibold text-slate-300 block mb-1">Mobile Number</label>
-            <input id="regPhone" type="tel" placeholder="9876543210" class="w-full bg-slate-950/75 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400" />
+            <input id="regPhone" type="tel" placeholder="9876543210" class="w-full bg-slate-950/75 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400 transition" />
           </div>
         </div>
         <div>
           <label class="text-xs font-semibold text-slate-300 block mb-1">Email Address</label>
-          <input id="regEmail" type="email" placeholder="you@gmail.com" class="w-full bg-slate-950/75 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400" />
+          <input id="regEmail" type="email" placeholder="you@gmail.com" class="w-full bg-slate-950/75 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400 transition" />
         </div>
         <div>
           <label class="text-xs font-semibold text-emerald-400 block mb-1">6-Digit E2EE Recovery PIN</label>
-          <input id="regPin" type="password" inputmode="numeric" maxlength="6" placeholder="••••••" class="w-full bg-slate-950/75 border border-emerald-500/30 rounded-xl px-3.5 py-2.5 text-sm tracking-[0.35em] font-mono text-white placeholder-slate-600 focus:outline-none focus:border-emerald-400" />
+          <input id="regPin" type="password" inputmode="numeric" maxlength="6" placeholder="••••••" class="w-full bg-slate-950/75 border border-emerald-500/30 rounded-xl px-3.5 py-2.5 text-sm tracking-[0.35em] font-mono text-white placeholder-slate-600 focus:outline-none focus:border-emerald-400 transition" />
         </div>
-        <button id="signupOtpBtn" onclick="requestSignupOtp()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold py-3 rounded-xl text-sm shadow-lg transition">
+        <button id="signupOtpBtn" onclick="requestSignupOtp()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold py-3 rounded-xl text-sm shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition">
           Create Encrypted Account →
         </button>
       </div>
@@ -120,39 +189,43 @@
           <label class="text-xs font-semibold text-slate-300 block mb-1.5">Enter 6-Digit Email OTP</label>
           <input id="otpInput" type="text" inputmode="numeric" maxlength="6" placeholder="000000" onkeydown="if(event.key==='Enter') verifyOtp()" class="w-full bg-slate-950/85 border border-white/15 rounded-xl px-4 py-3 text-center text-xl tracking-[0.45em] font-mono font-bold text-emerald-300 focus:outline-none focus:border-emerald-400" />
         </div>
-        <button onclick="verifyOtp()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 font-bold py-3 rounded-xl text-sm shadow-lg transition">
+        <button onclick="verifyOtp()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 font-bold py-3 rounded-xl text-sm shadow-lg active:scale-[0.98] transition">
           Verify & Open Dashboard
         </button>
         <button onclick="resetAuth()" class="w-full text-xs text-slate-400 hover:text-white transition">← Back</button>
+      </div>
+
+      <div class="mt-6 pt-4 border-t border-white/5 flex items-center justify-center gap-3 text-[10px] font-mono text-slate-500">
+        <span>ECDH P-256</span><span>•</span><span>AES-256-GCM</span><span>•</span><span>ZERO-KNOWLEDGE</span>
       </div>
     </div>
   </div>
 
   <!-- 2. MULTI-DEVICE RECOVERY PIN MODAL -->
   <div id="pinUnlockModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
-    <div class="w-full max-w-sm glass-panel border-emerald-500/30 rounded-3xl p-6 shadow-2xl text-center">
+    <div class="w-full max-w-sm glass-panel border-emerald-500/30 rounded-3xl p-6 shadow-2xl text-center modal-card">
       <div class="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-xl mx-auto mb-3">🔑</div>
       <h3 class="text-base font-bold text-white mb-1">Restore Encrypted Keys</h3>
       <p class="text-xs text-slate-400 mb-4">Purani chats unlock karne ke liye apna <b>6-Digit Recovery PIN</b> daalein:</p>
       <input id="unlockPinInput" type="password" inputmode="numeric" maxlength="6" placeholder="••••••" onkeydown="if(event.key==='Enter') unlockWithRecoveryPin()" class="w-full bg-slate-950/90 border border-white/15 rounded-xl px-4 py-3 text-center text-xl tracking-[0.4em] font-mono text-emerald-300 mb-3.5 focus:outline-none focus:border-emerald-400" />
-      <button onclick="unlockWithRecoveryPin()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 font-bold py-2.5 rounded-xl text-sm mb-2.5">Decrypt & Restore</button>
+      <button onclick="unlockWithRecoveryPin()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 font-bold py-2.5 rounded-xl text-sm mb-2.5 active:scale-95 transition">Decrypt & Restore</button>
       <button onclick="skipPinAndGenerateNew()" class="w-full text-[11px] text-slate-400 hover:text-slate-200">PIN bhool gaye? Nayi device key banayein</button>
     </div>
   </div>
 
   <!-- 3. APP LOCK & DECOY PIN OVERLAY -->
   <div id="appLockOverlay" class="hidden fixed inset-0 bg-slate-950/95 backdrop-blur-2xl flex items-center justify-center p-4 z-50">
-    <div class="w-full max-w-xs glass-panel rounded-3xl p-7 text-center shadow-2xl">
+    <div class="w-full max-w-xs glass-panel rounded-3xl p-7 text-center shadow-2xl modal-card">
       <div class="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-2xl mx-auto mb-4">🔒</div>
       <h3 class="text-lg font-bold text-white mb-1">CipherChat Locked</h3>
       <p class="text-xs text-slate-400 mb-5">Apna App Lock PIN enter karein</p>
       <input id="appLockPinInput" type="password" inputmode="numeric" maxlength="6" placeholder="••••" onkeydown="if(event.key==='Enter') submitAppUnlock()" class="w-full bg-slate-950 border border-white/15 rounded-xl px-4 py-3 text-center text-xl tracking-[0.4em] font-mono text-white mb-4 focus:outline-none focus:border-emerald-400" />
-      <button onclick="submitAppUnlock()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 font-bold py-2.5 rounded-xl text-sm">Unlock Workspace</button>
+      <button onclick="submitAppUnlock()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 font-bold py-2.5 rounded-xl text-sm active:scale-95 transition">Unlock Workspace</button>
     </div>
   </div>
 
   <!-- 4. INCOMING CALL & FULL-SCREEN WEBRTC CALL WITH DRAGGABLE PiP -->
-  <div id="incomingCallModal" class="hidden fixed top-5 right-5 left-5 sm:left-auto sm:w-80 glass-panel border-emerald-500/50 rounded-2xl p-4 shadow-2xl z-50">
+  <div id="incomingCallModal" class="hidden fixed top-5 right-5 left-5 sm:left-auto sm:w-80 glass-panel border-emerald-500/50 rounded-2xl p-4 shadow-2xl z-50 modal-card">
     <div class="flex items-center gap-3.5 mb-3.5">
       <div class="w-11 h-11 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-xl animate-pulse">📞</div>
       <div class="min-w-0">
@@ -161,16 +234,14 @@
       </div>
     </div>
     <div class="grid grid-cols-2 gap-2">
-      <button onclick="acceptIncomingCall()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold py-2.5 rounded-xl transition">Accept</button>
-      <button onclick="declineIncomingCall()" class="bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold py-2.5 rounded-xl transition">Decline</button>
+      <button onclick="acceptIncomingCall()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold py-2.5 rounded-xl active:scale-95 transition">Accept</button>
+      <button onclick="declineIncomingCall()" class="bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold py-2.5 rounded-xl active:scale-95 transition">Decline</button>
     </div>
   </div>
 
   <div id="activeCallModal" style="height: 100vh; height: 100dvh;" class="hidden fixed inset-0 bg-black flex flex-col justify-between z-50 overflow-hidden select-none">
-    <!-- Full-Screen Remote Video -->
     <video id="remoteVideo" autoplay playsinline class="absolute inset-0 w-full h-full object-cover bg-black"></video>
 
-    <!-- Top Floating Call Header -->
     <div class="relative z-20 p-4 pt-5 bg-gradient-to-b from-black/80 via-black/40 to-transparent text-center pointer-events-none">
       <span class="text-[10px] sm:text-[11px] font-mono uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-3 py-1 rounded-full">
         🔒 DTLS-SRTP End-to-End Encrypted
@@ -179,7 +250,6 @@
       <p id="callStatusText" class="text-xs text-emerald-400 font-medium mt-0.5 drop-shadow">Ringing...</p>
     </div>
 
-    <!-- Draggable Self-View Camera Window (Slide anywhere on Phone & Laptop) -->
     <div id="localVideoPip" style="top: 84px; right: 16px;" class="fixed w-28 sm:w-44 aspect-[3/4] sm:aspect-video rounded-2xl overflow-hidden border-2 border-white/35 shadow-2xl z-30 cursor-grab active:cursor-grabbing touch-none bg-slate-950">
       <video id="localVideo" autoplay playsinline muted class="w-full h-full object-cover pointer-events-none"></video>
       <div class="absolute bottom-1 inset-x-0 text-center pointer-events-none">
@@ -187,14 +257,13 @@
       </div>
     </div>
 
-    <!-- Bottom Floating Controls -->
     <div style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom));" class="relative z-20 p-4 bg-gradient-to-t from-black/85 via-black/45 to-transparent flex justify-center">
       <div class="glass-panel px-3.5 py-2.5 rounded-2xl flex flex-wrap items-center justify-center gap-2 shadow-2xl">
-        <button id="muteMicBtn" onclick="toggleCallMic()" class="bg-white/10 hover:bg-white/15 px-3 py-2 rounded-xl text-xs font-semibold text-white transition">🎤 Mic On</button>
-        <button id="toggleCamBtn" onclick="toggleCallCam()" class="bg-white/10 hover:bg-white/15 px-3 py-2 rounded-xl text-xs font-semibold text-white transition">📹 Cam On</button>
-        <button id="shareScreenBtn" onclick="toggleScreenShare()" class="bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/40 px-3 py-2 rounded-xl text-xs font-semibold text-sky-300 transition">🖥️ Share</button>
-        <button id="videoFitBtn" onclick="toggleVideoFit()" class="bg-white/10 hover:bg-white/15 px-3 py-2 rounded-xl text-xs font-semibold text-slate-200 transition">⛶ Fill Screen</button>
-        <button onclick="endCall(true)" class="bg-rose-600 hover:bg-rose-500 px-5 py-2 rounded-xl text-xs font-bold text-white shadow-lg transition">End Call</button>
+        <button id="muteMicBtn" onclick="toggleCallMic()" class="bg-white/10 hover:bg-white/15 px-3 py-2 rounded-xl text-xs font-semibold text-white active:scale-95 transition">🎤 Mic On</button>
+        <button id="toggleCamBtn" onclick="toggleCallCam()" class="bg-white/10 hover:bg-white/15 px-3 py-2 rounded-xl text-xs font-semibold text-white active:scale-95 transition">📹 Cam On</button>
+        <button id="shareScreenBtn" onclick="toggleScreenShare()" class="bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/40 px-3 py-2 rounded-xl text-xs font-semibold text-sky-300 active:scale-95 transition">🖥️ Share</button>
+        <button id="videoFitBtn" onclick="toggleVideoFit()" class="bg-white/10 hover:bg-white/15 px-3 py-2 rounded-xl text-xs font-semibold text-slate-200 active:scale-95 transition">⛶ Fill Screen</button>
+        <button onclick="endCall(true)" class="bg-rose-600 hover:bg-rose-500 px-5 py-2 rounded-xl text-xs font-bold text-white shadow-lg active:scale-95 transition">End Call</button>
       </div>
     </div>
   </div>
@@ -204,20 +273,20 @@
     <div class="flex items-center justify-between gap-2 p-3.5 sm:px-6 bg-black/60 border-b border-white/10 shrink-0">
       <span id="lightboxFileName" class="text-xs font-mono text-slate-200 truncate">Media Preview</span>
       <div class="flex items-center gap-2 shrink-0">
-        <a id="lightboxDownloadBtn" href="#" download="media" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3.5 py-1.5 rounded-xl text-xs transition">⬇ Download</a>
-        <button onclick="closeMediaLightbox()" class="bg-white/15 hover:bg-white/25 text-white font-bold px-3.5 py-1.5 rounded-xl text-xs transition">✕ Close</button>
+        <a id="lightboxDownloadBtn" href="#" download="media" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3.5 py-1.5 rounded-xl text-xs active:scale-95 transition">⬇ Download</a>
+        <button onclick="closeMediaLightbox()" class="bg-white/15 hover:bg-white/25 text-white font-bold px-3.5 py-1.5 rounded-xl text-xs active:scale-95 transition">✕ Close</button>
       </div>
     </div>
-    <div id="lightboxMediaStage" class="flex-1 min-h-0 flex items-center justify-center p-3 sm:p-6 overflow-hidden"></div>
+    <div id="lightboxMediaStage" class="flex-1 min-h-0 flex items-center justify-center p-3 sm:p-6 overflow-hidden modal-card"></div>
   </div>
 
   <!-- 6. MAIN DASHBOARD & RESPONSIVE WORKSPACE -->
   <div id="chatScreen" class="hidden h-full flex">
-    <aside id="sidebarPanel" class="w-full md:w-[350px] lg:w-[370px] glass-panel border-y-0 border-l-0 flex flex-col shrink-0">
+    <aside id="sidebarPanel" class="w-full md:w-[350px] lg:w-[375px] glass-panel border-y-0 border-l-0 flex flex-col shrink-0">
       <div class="p-4 border-b border-white/5 shrink-0">
         <div class="flex items-center justify-between gap-2">
-          <div class="flex items-center gap-3 min-w-0 cursor-pointer" onclick="openProfileModal()">
-            <div id="myAvatar" class="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-slate-950 font-extrabold text-sm shrink-0 shadow-md">CC</div>
+          <div class="flex items-center gap-3 min-w-0 cursor-pointer group" onclick="openProfileModal()">
+            <div id="myAvatar" class="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-slate-950 font-extrabold text-sm shrink-0 shadow-md group-hover:scale-105 transition">CC</div>
             <div class="min-w-0">
               <div class="flex items-center gap-1.5">
                 <span id="currentUserName" class="font-bold text-sm text-white truncate"></span>
@@ -227,11 +296,11 @@
             </div>
           </div>
           <div class="flex items-center gap-1 shrink-0">
-            <button id="adminPanelBtn" onclick="openAdminModal()" title="Administrator Control Panel" class="hidden px-2.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-amber-300 text-xs font-bold transition">👑 Admin</button>
-            <button onclick="openHelpModal()" title="Feature Guide" class="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-sky-300 text-xs font-bold transition">?</button>
-            <button id="lockNowBtn" onclick="lockAppScreen()" title="Lock Screen" class="hidden p-2 rounded-xl bg-white/5 hover:bg-white/10 text-amber-300 text-xs transition">🔒</button>
-            <button onclick="openProfileModal()" title="Settings, Storage & Account" class="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 text-xs transition">⚙</button>
-            <button onclick="logout()" title="Logout" class="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-rose-500/20 hover:text-rose-300 text-slate-400 text-xs font-medium transition">Exit</button>
+            <button id="adminPanelBtn" onclick="openAdminModal()" title="Administrator Control Panel" class="hidden px-2.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-amber-300 text-xs font-bold active:scale-95 transition">👑 Admin</button>
+            <button onclick="openHelpModal()" title="Feature Guide" class="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-sky-300 text-xs font-bold active:scale-95 transition">?</button>
+            <button id="lockNowBtn" onclick="lockAppScreen()" title="Lock Screen" class="hidden p-2 rounded-xl bg-white/5 hover:bg-white/10 text-amber-300 text-xs active:scale-95 transition">🔒</button>
+            <button onclick="openProfileModal()" title="Settings, Storage & Account" class="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 text-xs active:scale-95 transition">⚙</button>
+            <button onclick="logout()" title="Logout" class="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-rose-500/20 hover:text-rose-300 text-slate-400 text-xs font-medium active:scale-95 transition">Exit</button>
           </div>
         </div>
 
@@ -242,16 +311,16 @@
       </div>
 
       <div class="p-3 pb-2 grid grid-cols-2 gap-2 shrink-0">
-        <button onclick="openAddFriendModal('search')" class="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 text-xs font-bold py-2.5 px-3 rounded-xl shadow-md transition">+ Add / QR Invite</button>
-        <button onclick="openCreateGroupModal()" class="bg-white/5 hover:bg-white/10 text-slate-100 text-xs font-semibold py-2.5 px-3 rounded-xl border border-white/10 transition">+ New Group</button>
+        <button onclick="openAddFriendModal('search')" class="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 text-xs font-bold py-2.5 px-3 rounded-xl shadow-md shadow-emerald-500/15 active:scale-95 transition">+ Add / QR Invite</button>
+        <button onclick="openCreateGroupModal()" class="bg-white/5 hover:bg-white/10 text-slate-100 text-xs font-semibold py-2.5 px-3 rounded-xl border border-white/10 active:scale-95 transition">+ New Group</button>
       </div>
 
       <div class="px-3 pb-2.5 border-b border-white/5 space-y-2 shrink-0">
-        <input id="sidebarSearchInput" type="text" placeholder="Search friends or groups..." oninput="renderSidebarLists()" class="w-full bg-slate-950/75 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400" />
+        <input id="sidebarSearchInput" type="text" placeholder="Search friends or groups..." oninput="renderSidebarLists()" class="w-full bg-slate-950/75 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400 transition" />
         <div class="flex gap-1.5 text-[11px]">
-          <button id="filterAllBtn" onclick="setSidebarFilter('all')" class="px-2.5 py-1 rounded-lg font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">All</button>
-          <button id="filterUnreadBtn" onclick="setSidebarFilter('unread')" class="px-2.5 py-1 rounded-lg font-semibold bg-white/5 text-slate-400 hover:text-white">Unread</button>
-          <button id="filterGroupsBtn" onclick="setSidebarFilter('groups')" class="px-2.5 py-1 rounded-lg font-semibold bg-white/5 text-slate-400 hover:text-white">Groups</button>
+          <button id="filterAllBtn" onclick="setSidebarFilter('all')" class="px-2.5 py-1 rounded-lg font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition">All</button>
+          <button id="filterUnreadBtn" onclick="setSidebarFilter('unread')" class="px-2.5 py-1 rounded-lg font-semibold bg-white/5 text-slate-400 hover:text-white transition">Unread</button>
+          <button id="filterGroupsBtn" onclick="setSidebarFilter('groups')" class="px-2.5 py-1 rounded-lg font-semibold bg-white/5 text-slate-400 hover:text-white transition">Groups</button>
         </div>
       </div>
 
@@ -272,7 +341,7 @@
         <div id="directSection">
           <div class="text-[10px] font-bold uppercase tracking-widest text-slate-500 px-1.5 mb-1.5 flex justify-between items-center">
             <span>Direct Messages</span>
-            <span class="text-[10px] text-emerald-400 font-mono flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> LIVE</span>
+            <span class="text-[10px] text-emerald-400 font-mono flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> LIVE</span>
           </div>
           <div id="friendsList" class="space-y-1"></div>
         </div>
@@ -287,12 +356,15 @@
     <main id="chatMainPanel" class="hidden md:flex flex-1 flex-col chat-pattern relative min-w-0">
       <header class="h-14 sm:h-16 shrink-0 glass-panel border-x-0 border-t-0 px-2.5 sm:px-5 flex items-center justify-between gap-1.5 sm:gap-2 z-10">
         <div class="flex items-center gap-2 min-w-0">
-          <button onclick="closeMobileChat()" class="md:hidden p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 text-xs font-bold shrink-0">←</button>
-          <div id="activePeerAvatar" onclick="openChatInfoModal()" class="hidden w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-sky-400 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shrink-0 cursor-pointer">?</div>
+          <button onclick="closeMobileChat()" class="md:hidden p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 text-xs font-bold shrink-0 active:scale-95 transition">←</button>
+          <div id="activePeerAvatar" onclick="openChatInfoModal()" class="hidden w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-sky-400 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shrink-0 cursor-pointer hover:scale-105 transition">?</div>
           <div class="min-w-0 cursor-pointer" onclick="openChatInfoModal()">
             <div class="flex items-center gap-1.5">
               <h2 id="peerName" class="font-bold text-xs sm:text-sm text-white truncate">Select a Friend or Group</h2>
-              <span id="typingBadge" class="hidden text-[11px] text-emerald-400 font-medium animate-pulse shrink-0">typing...</span>
+              <span id="typingBadge" class="hidden inline-flex items-center gap-1 text-[11px] text-emerald-400 font-medium shrink-0">
+                <span id="typingLabelText">typing</span>
+                <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
+              </span>
             </div>
             <p id="peerSubtitle" class="text-[11px] text-slate-400 truncate">End-to-End Encrypted (ECDH P-256 + AES-256-GCM)</p>
           </div>
@@ -300,53 +372,58 @@
 
         <div id="chatControls" class="hidden flex items-center gap-1 sm:gap-1.5 shrink-0">
           <div id="callButtonsWrap" class="flex items-center gap-1">
-            <button onclick="startCall(false)" title="Encrypted Audio Call" class="p-1.5 sm:p-2 rounded-xl bg-white/5 hover:bg-emerald-500/20 border border-white/10 text-emerald-400 text-xs transition">📞</button>
-            <button onclick="startCall(true)" title="Encrypted Video & Screen Call" class="p-1.5 sm:p-2 rounded-xl bg-white/5 hover:bg-emerald-500/20 border border-white/10 text-emerald-400 text-xs transition">📹</button>
+            <button onclick="startCall(false)" title="Encrypted Audio Call" class="p-1.5 sm:p-2 rounded-xl bg-white/5 hover:bg-emerald-500/20 border border-white/10 text-emerald-400 text-xs active:scale-95 transition">📞</button>
+            <button onclick="startCall(true)" title="Encrypted Video & Screen Call" class="p-1.5 sm:p-2 rounded-xl bg-white/5 hover:bg-emerald-500/20 border border-white/10 text-emerald-400 text-xs active:scale-95 transition">📹</button>
           </div>
           <input id="chatSearchInput" type="text" placeholder="Search..." oninput="renderMessages(true)" class="hidden lg:block w-28 focus:w-40 transition-all bg-slate-950/70 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400" />
           <label class="flex items-center gap-1 text-xs text-slate-300 cursor-pointer bg-slate-950/70 border border-white/10 px-2 py-1.5 rounded-xl hover:border-emerald-500/40 transition">
             <input type="checkbox" id="xrayToggle" onchange="renderMessages(true)" class="accent-emerald-500" />
             <span class="font-mono text-[10px] sm:text-[11px]">X-Ray</span>
           </label>
-          <button onclick="openChatInfoModal()" class="px-2 py-1.5 sm:p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sky-300 text-[11px] sm:text-xs font-bold transition">🛡️ Info</button>
+          <button onclick="openChatInfoModal()" class="px-2 py-1.5 sm:p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sky-300 text-[11px] sm:text-xs font-bold active:scale-95 transition">🛡️ Info</button>
         </div>
       </header>
 
-      <div id="messagesBox" class="flex-1 min-h-0 overflow-y-auto p-3.5 sm:p-6 space-y-3">
-        <div class="h-full flex items-center justify-center">
-          <div class="max-w-lg w-full glass-panel rounded-3xl p-6 sm:p-8 shadow-2xl">
-            <div class="flex items-center gap-3.5 mb-4">
-              <div class="w-12 h-12 rounded-2xl bg-emerald-400/20 border border-emerald-500/30 flex items-center justify-center text-2xl shrink-0">🛡️</div>
-              <div>
-                <h3 class="font-extrabold text-lg text-white">CipherChat Pro Workspace</h3>
-                <p class="text-xs text-slate-400">Your messages, files & calls are encrypted locally before leaving your device.</p>
+      <!-- Messages Feed + Dedicated Live Upload Progress Container -->
+      <div id="messagesBox" class="flex-1 min-h-0 overflow-y-auto p-3.5 sm:p-6">
+        <div id="messagesListContainer" class="space-y-3">
+          <div class="h-full min-h-[65vh] flex items-center justify-center">
+            <div class="max-w-lg w-full glass-panel rounded-3xl p-6 sm:p-8 shadow-2xl modal-card">
+              <div class="flex items-center gap-3.5 mb-4">
+                <div class="w-12 h-12 rounded-2xl bg-emerald-400/20 border border-emerald-500/30 flex items-center justify-center text-2xl shrink-0">🛡️</div>
+                <div>
+                  <h3 class="font-extrabold text-lg text-white">CipherChat Pro Workspace</h3>
+                  <p class="text-xs text-slate-400">Your messages, files & calls are encrypted locally before leaving your device.</p>
+                </div>
               </div>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-left">
-              <button onclick="openAddFriendModal('search')" class="p-3.5 rounded-2xl bg-white/5 hover:bg-emerald-500/10 border border-white/10 transition">
-                <div class="text-xs font-bold text-emerald-300 mb-0.5">+ Add Friend</div>
-                <div class="text-[11px] text-slate-400">@username, Mobile ya Email se request bhejein</div>
-              </button>
-              <button onclick="openAddFriendModal('qr')" class="p-3.5 rounded-2xl bg-white/5 hover:bg-sky-500/10 border border-white/10 transition">
-                <div class="text-xs font-bold text-sky-300 mb-0.5">🔗 My QR Invite Link</div>
-                <div class="text-[11px] text-slate-400">Bina number share kiye 1-hour invite link banayein</div>
-              </button>
-              <button onclick="openCreateGroupModal()" class="p-3.5 rounded-2xl bg-white/5 hover:bg-indigo-500/10 border border-white/10 transition">
-                <div class="text-xs font-bold text-indigo-300 mb-0.5">👥 Encrypted Group</div>
-                <div class="text-[11px] text-slate-400">Friends ke saath private E2EE group chat banayein</div>
-              </button>
-              <button onclick="openHelpModal()" class="p-3.5 rounded-2xl bg-white/5 hover:bg-purple-500/10 border border-white/10 transition">
-                <div class="text-xs font-bold text-purple-300 mb-0.5">🕵️ Stego & Sealed Guide</div>
-                <div class="text-[11px] text-slate-400">Photo me secret text & zero-metadata mode seekhein</div>
-              </button>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-left">
+                <button onclick="openAddFriendModal('search')" class="p-3.5 rounded-2xl bg-white/5 hover:bg-emerald-500/10 border border-white/10 transition">
+                  <div class="text-xs font-bold text-emerald-300 mb-0.5">+ Add Friend</div>
+                  <div class="text-[11px] text-slate-400">@username, Mobile ya Email se request bhejein</div>
+                </button>
+                <button onclick="openAddFriendModal('qr')" class="p-3.5 rounded-2xl bg-white/5 hover:bg-sky-500/10 border border-white/10 transition">
+                  <div class="text-xs font-bold text-sky-300 mb-0.5">🔗 My QR Invite Link</div>
+                  <div class="text-[11px] text-slate-400">Bina number share kiye 1-hour invite link banayein</div>
+                </button>
+                <button onclick="openCreateGroupModal()" class="p-3.5 rounded-2xl bg-white/5 hover:bg-indigo-500/10 border border-white/10 transition">
+                  <div class="text-xs font-bold text-indigo-300 mb-0.5">👥 Encrypted Group</div>
+                  <div class="text-[11px] text-slate-400">Friends ke saath private E2EE group chat banayein</div>
+                </button>
+                <button onclick="openHelpModal()" class="p-3.5 rounded-2xl bg-white/5 hover:bg-purple-500/10 border border-white/10 transition">
+                  <div class="text-xs font-bold text-purple-300 mb-0.5">🕵️ Stego & Sealed Guide</div>
+                  <div class="text-[11px] text-slate-400">Photo me secret text & zero-metadata mode seekhein</div>
+                </button>
+              </div>
             </div>
           </div>
         </div>
+        <!-- Active Circular Upload Progress Bubbles Render Here Without Flickering -->
+        <div id="pendingUploadsContainer" class="space-y-3 mt-3"></div>
       </div>
 
       <div id="activeModesBar" class="hidden shrink-0 mx-3 sm:mx-4 mb-1 flex flex-wrap items-center gap-1.5"></div>
 
-      <div id="replyBanner" class="hidden shrink-0 mx-3 sm:mx-4 mb-1 px-3.5 py-2 glass-panel rounded-2xl flex items-center justify-between text-xs">
+      <div id="replyBanner" class="hidden shrink-0 mx-3 sm:mx-4 mb-1 px-3.5 py-2 glass-panel rounded-2xl flex items-center justify-between text-xs modal-card">
         <div class="truncate border-l-2 border-emerald-400 pl-3">
           <span class="text-emerald-400 font-bold" id="replyAuthor">Replying</span>
           <p class="text-slate-300 truncate" id="replyText"></p>
@@ -355,12 +432,12 @@
       </div>
 
       <div id="composerBar" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom));" class="hidden shrink-0 p-2.5 sm:p-3.5 pt-1 relative z-20">
-        <div id="composerToolsMenu" class="hidden absolute bottom-16 left-2.5 sm:left-4 w-72 glass-panel border-white/15 rounded-2xl p-2.5 shadow-2xl z-30 space-y-1">
+        <div id="composerToolsMenu" class="hidden absolute bottom-16 left-2.5 sm:left-4 w-72 glass-panel border-white/15 rounded-2xl p-2.5 shadow-2xl z-30 space-y-1 modal-card">
           <label class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/10 cursor-pointer transition">
             <span class="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-sm">📎</span>
             <div>
               <div class="text-xs font-bold text-white">Photo, Video or Document</div>
-              <div class="text-[10px] text-slate-400">AES-256 encrypted file up to 20MB</div>
+              <div class="text-[10px] text-slate-400">Live circular progress + cancel up to 20MB</div>
             </div>
             <input id="mediaInput" type="file" onchange="handleMediaUpload(event); toggleToolsMenu(false)" class="hidden" />
           </label>
@@ -399,7 +476,7 @@
           </div>
         </div>
 
-        <div id="emojiPickerMenu" class="hidden absolute bottom-16 left-12 glass-panel border-white/15 rounded-2xl p-2.5 shadow-2xl z-30 grid grid-cols-6 gap-1.5 text-lg">
+        <div id="emojiPickerMenu" class="hidden absolute bottom-16 left-12 glass-panel border-white/15 rounded-2xl p-2.5 shadow-2xl z-30 grid grid-cols-6 gap-1.5 text-lg modal-card">
           <button onclick="insertEmoji('😀')" class="hover:bg-white/10 p-1.5 rounded-lg">😀</button>
           <button onclick="insertEmoji('😂')" class="hover:bg-white/10 p-1.5 rounded-lg">😂</button>
           <button onclick="insertEmoji('❤️')" class="hover:bg-white/10 p-1.5 rounded-lg">❤️</button>
@@ -415,13 +492,13 @@
         </div>
 
         <div class="glass-panel rounded-2xl p-1.5 sm:p-2 flex items-center gap-1.5 shadow-xl">
-          <button onclick="toggleToolsMenu()" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-emerald-500/20 text-emerald-300 font-bold text-base flex items-center justify-center shrink-0 transition">+</button>
-          <button onclick="toggleEmojiMenu()" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-base flex items-center justify-center shrink-0 transition">😊</button>
+          <button onclick="toggleToolsMenu()" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-emerald-500/20 text-emerald-300 font-bold text-base flex items-center justify-center shrink-0 active:scale-90 transition">+</button>
+          <button onclick="toggleEmojiMenu()" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-base flex items-center justify-center shrink-0 active:scale-90 transition">😊</button>
           <input id="msgInput" type="text" placeholder="Type encrypted message..." oninput="notifyTyping()" onkeydown="if(event.key==='Enter') sendText()" class="flex-1 min-w-0 bg-transparent px-2 py-2 text-sm text-white placeholder-slate-500 focus:outline-none" />
-          <button id="voiceBtn" onclick="toggleVoiceRecording()" class="px-2.5 sm:px-3 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-200 flex items-center gap-1.5 shrink-0 transition">
+          <button id="voiceBtn" onclick="toggleVoiceRecording()" class="px-2.5 sm:px-3 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-200 flex items-center gap-1.5 shrink-0 active:scale-95 transition">
             🎤 <span id="voiceTimerLabel" class="hidden font-mono text-[11px]">0:00</span>
           </button>
-          <button onclick="sendText()" class="bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 px-3.5 sm:px-4 h-9 rounded-xl text-xs font-extrabold shadow-md shrink-0 transition">Send ↑</button>
+          <button onclick="sendText()" class="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 px-3.5 sm:px-4 h-9 rounded-xl text-xs font-extrabold shadow-md shadow-emerald-500/20 shrink-0 active:scale-95 transition">Send ↑</button>
         </div>
       </div>
     </main>
@@ -429,7 +506,7 @@
 
   <!-- 7. CHAT INFO & SAFETY NUMBER MODAL -->
   <div id="chatInfoModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
-    <div class="w-full max-w-md glass-panel rounded-3xl p-6 shadow-2xl text-center">
+    <div class="w-full max-w-md glass-panel rounded-3xl p-6 shadow-2xl text-center modal-card">
       <div class="flex items-center justify-between mb-4">
         <span class="text-xs font-mono uppercase tracking-wider text-sky-400 font-bold">🛡️ Encryption & Chat Info</span>
         <button onclick="closeModal('chatInfoModal')" class="text-slate-400 hover:text-white text-sm">✕</button>
@@ -452,7 +529,7 @@
 
   <!-- 8. FORWARD MODAL -->
   <div id="forwardModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
-    <div class="w-full max-w-md glass-panel border-emerald-500/30 rounded-3xl p-6 shadow-2xl">
+    <div class="w-full max-w-md glass-panel border-emerald-500/30 rounded-3xl p-6 shadow-2xl modal-card">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-base font-bold text-white">↪ Forward Encrypted Message</h3>
         <button onclick="closeModal('forwardModal')" class="text-slate-400 hover:text-white text-sm">✕</button>
@@ -464,23 +541,23 @@
 
   <!-- 9. FEATURE GUIDE MODAL -->
   <div id="helpModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto">
-    <div class="w-full max-w-lg glass-panel rounded-3xl p-6 shadow-2xl my-auto">
+    <div class="w-full max-w-lg glass-panel rounded-3xl p-6 shadow-2xl my-auto modal-card">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-base font-extrabold text-white">📘 CipherChat Quick User Guide</h3>
         <button onclick="closeModal('helpModal')" class="text-slate-400 hover:text-white text-sm">✕</button>
       </div>
       <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
         <div class="bg-slate-950/75 border border-white/10 rounded-2xl p-3.5">
-          <div class="font-bold text-emerald-400 mb-1">1. Full-Screen Photo, Video & Draggable Video Call</div>
-          <p class="text-slate-400">Chat me kisi bhi photo ya video par tap karte hi wo full-screen viewer me khulega. Video call me apni chhoti camera window ko slide karke kahin bhi adjust kar sakte hain.</p>
+          <div class="font-bold text-emerald-400 mb-1">1. Live Circular Upload Progress & Cancel (✕)</div>
+          <p class="text-slate-400">Photo, Video ya koi bhi File bhejte waqt live circular progress ring dikhegi. Upload ke beech me <b>✕</b> dabane par upload turant cancel ho jayega.</p>
         </div>
         <div class="bg-slate-950/75 border border-white/10 rounded-2xl p-3.5">
           <div class="font-bold text-purple-400 mb-1">2. Steganography Secret Image (+ → Stego)</div>
           <p class="text-slate-400">Normal photo ke pixels ke andar AES-256 encrypted text chhup jata hai. Receiver <b>Reveal</b> dabakar andar ka message padh sakta hai.</p>
         </div>
         <div class="bg-slate-950/75 border border-white/10 rounded-2xl p-3.5">
-          <div class="font-bold text-indigo-400 mb-1">3. Reply, Forward & Sealed Sender</div>
-          <p class="text-slate-400">Har message ke neeche <b>↩ Reply</b> aur <b>↪ Forward</b> buttons hain. <b>Sealed Sender ON</b> karne par DB me <code>sender_id = 0</code> save hota hai.</p>
+          <div class="font-bold text-indigo-400 mb-1">3. Full-Screen Video Call & Draggable Camera</div>
+          <p class="text-slate-400">Video call full-screen khulti hai aur aap apni chhoti camera window ko slide karke kahin bhi adjust kar sakte hain.</p>
         </div>
       </div>
     </div>
@@ -488,7 +565,7 @@
 
   <!-- 10. ADMINISTRATOR CONTROL PANEL -->
   <div id="adminModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto">
-    <div class="w-full max-w-4xl glass-panel border-amber-500/40 rounded-3xl p-5 sm:p-6 shadow-2xl my-auto max-h-[90vh] flex flex-col">
+    <div class="w-full max-w-4xl glass-panel border-amber-500/40 rounded-3xl p-5 sm:p-6 shadow-2xl my-auto max-h-[90vh] flex flex-col modal-card">
       <div class="flex items-center justify-between pb-4 border-b border-white/10 shrink-0">
         <div>
           <h3 class="text-lg font-extrabold text-amber-300">👑 Administrator Control Panel</h3>
@@ -534,7 +611,7 @@
 
   <!-- 11. ADD FRIEND, STEGO, POLL, GROUP, PROFILE & VIEW-ONCE MODALS -->
   <div id="addFriendModal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 z-50">
-    <div class="w-full max-w-md glass-panel rounded-3xl p-6 shadow-2xl">
+    <div class="w-full max-w-md glass-panel rounded-3xl p-6 shadow-2xl modal-card">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-base font-bold text-white">Connect with Friends</h3>
         <button onclick="closeModal('addFriendModal')" class="text-slate-400 hover:text-white text-sm">✕</button>
@@ -567,7 +644,7 @@
   </div>
 
   <div id="stegoModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
-    <div class="w-full max-w-md glass-panel border-purple-500/30 rounded-3xl p-6 shadow-2xl">
+    <div class="w-full max-w-md glass-panel border-purple-500/30 rounded-3xl p-6 shadow-2xl modal-card">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-base font-bold text-purple-300">🕵️ Steganography Secret Image</h3>
         <button onclick="closeModal('stegoModal')" class="text-slate-400 hover:text-white text-sm">✕</button>
@@ -581,7 +658,7 @@
   </div>
 
   <div id="pollModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
-    <div class="w-full max-w-md glass-panel border-sky-500/30 rounded-3xl p-6 shadow-2xl">
+    <div class="w-full max-w-md glass-panel border-sky-500/30 rounded-3xl p-6 shadow-2xl modal-card">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-base font-bold text-sky-300">📊 Create Encrypted Poll</h3>
         <button onclick="closeModal('pollModal')" class="text-slate-400 hover:text-white text-sm">✕</button>
@@ -598,7 +675,7 @@
   </div>
 
   <div id="createGroupModal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 z-50">
-    <div class="w-full max-w-md glass-panel rounded-3xl p-6 shadow-2xl">
+    <div class="w-full max-w-md glass-panel rounded-3xl p-6 shadow-2xl modal-card">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-base font-bold text-white">Create Encrypted Group</h3>
         <button onclick="closeModal('createGroupModal')" class="text-slate-400 hover:text-white text-sm">✕</button>
@@ -610,7 +687,7 @@
   </div>
 
   <div id="profileModal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto">
-    <div class="w-full max-w-lg glass-panel rounded-3xl p-6 shadow-2xl my-auto max-h-[90vh] overflow-y-auto">
+    <div class="w-full max-w-lg glass-panel rounded-3xl p-6 shadow-2xl my-auto max-h-[90vh] overflow-y-auto modal-card">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-base font-bold text-white">Account, Storage & Security</h3>
         <button onclick="closeModal('profileModal')" class="text-slate-400 hover:text-white text-sm">✕</button>
@@ -676,7 +753,7 @@
   </div>
 
   <div id="viewOnceModal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 z-50">
-    <div class="max-w-lg w-full glass-panel border-amber-500/40 rounded-3xl p-4 text-center">
+    <div class="max-w-lg w-full glass-panel border-amber-500/40 rounded-3xl p-4 text-center modal-card">
       <div class="flex items-center justify-between mb-3">
         <span class="text-xs text-amber-400 font-bold">1️⃣ View-Once Encrypted Media</span>
         <button onclick="closeViewOnceModal()" class="bg-white/10 px-3 py-1.5 rounded-xl text-xs font-semibold">Close & Destroy</button>
@@ -727,6 +804,11 @@
     function escapeHtml(str) {
       return String(str || '').replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
     }
+    function formatFileSize(bytes) {
+      if (!bytes || bytes < 1024) return `${bytes || 0} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    }
     function getInitials(name) {
       const p = String(name || 'U').trim().split(/\s+/);
       return ((p[0]?.[0] || '') + (p[1]?.[0] || '')).toUpperCase() || 'U';
@@ -753,6 +835,122 @@
     function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
     function openHelpModal() { document.getElementById('helpModal').classList.remove('hidden'); }
 
+    // ==========================================
+    // CIRCULAR SVG UPLOAD PROGRESS CARD + CANCEL (✕)
+    // ==========================================
+    function createCircularUploadCard({ fileName, fileSize, msgType, previewUrl = null, onCancel }) {
+      const container = document.getElementById('pendingUploadsContainer');
+      const box = document.getElementById('messagesBox');
+      const radius = 21;
+      const circumference = 2 * Math.PI * radius;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'flex flex-col items-end msg-anim-mine';
+
+      const iconMap = { image: '🖼️', stego: '🕵️', video: '🎬', audio: '🎤', file: '📄' };
+      const typeIcon = iconMap[msgType] || '📎';
+
+      wrap.innerHTML = `
+        <div class="max-w-[85%] sm:max-w-sm w-full glass-panel border-emerald-500/40 rounded-2xl rounded-tr-sm p-3 shadow-xl relative overflow-hidden">
+          ${previewUrl ? `
+            <div class="relative rounded-xl overflow-hidden mb-2.5 bg-slate-950">
+              <img src="${previewUrl}" class="w-full max-h-48 object-cover opacity-45 blur-[1px] transition" />
+              <div class="absolute inset-0 flex items-center justify-center bg-black/35">
+                <div class="relative w-14 h-14 flex items-center justify-center">
+                  <svg class="w-14 h-14" viewBox="0 0 52 52">
+                    <circle cx="26" cy="26" r="${radius}" stroke="rgba(255,255,255,0.2)" stroke-width="3.5" fill="rgba(5,8,17,0.75)" />
+                    <circle class="progress-ring-circle js-ring" cx="26" cy="26" r="${radius}" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="transparent"
+                      stroke-dasharray="${circumference}" stroke-dashoffset="${circumference}" />
+                  </svg>
+                  <button type="button" title="Cancel Upload" class="js-cancel absolute inset-0 flex items-center justify-center text-white hover:text-rose-400 font-extrabold text-sm transition">
+                    ✕
+                  </button>
+                </div>
+              </div>
+            </div>
+          ` : ''}
+          <div class="flex items-center gap-3">
+            ${!previewUrl ? `
+              <div class="relative w-12 h-12 shrink-0 flex items-center justify-center">
+                <svg class="w-12 h-12" viewBox="0 0 52 52">
+                  <circle cx="26" cy="26" r="${radius}" stroke="rgba(255,255,255,0.12)" stroke-width="3.5" fill="rgba(5,8,17,0.7)" />
+                  <circle class="progress-ring-circle js-ring" cx="26" cy="26" r="${radius}" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" fill="transparent"
+                    stroke-dasharray="${circumference}" stroke-dashoffset="${circumference}" />
+                </svg>
+                <button type="button" title="Cancel Upload" class="js-cancel absolute inset-0 flex items-center justify-center text-slate-200 hover:text-rose-400 font-extrabold text-xs transition">
+                  ✕
+                </button>
+              </div>
+            ` : ''}
+            <div class="min-w-0 flex-1">
+              <div class="text-xs font-bold text-white truncate">${typeIcon} ${escapeHtml(fileName || 'Encrypted File')}</div>
+              <div class="flex items-center justify-between gap-2 mt-1 text-[11px] font-mono">
+                <span class="js-status text-emerald-300">Encrypting...</span>
+                <span class="js-pct text-white font-bold">0%</span>
+              </div>
+              <div class="text-[10px] font-mono text-slate-400 mt-0.5">${formatFileSize(fileSize)} • Tap ✕ to cancel</div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const ring = wrap.querySelector('.js-ring');
+      const pctEl = wrap.querySelector('.js-pct');
+      const statusEl = wrap.querySelector('.js-status');
+      const cancelBtn = wrap.querySelector('.js-cancel');
+
+      cancelBtn.onclick = () => {
+        if (onCancel) onCancel();
+      };
+
+      container.appendChild(wrap);
+      box.scrollTop = box.scrollHeight;
+
+      return {
+        update(percent, label) {
+          const clamped = Math.min(100, Math.max(0, Math.round(percent)));
+          const offset = circumference - (clamped / 100) * circumference;
+          ring.style.strokeDashoffset = offset;
+          pctEl.textContent = `${clamped}%`;
+          if (label) statusEl.textContent = label;
+        },
+        remove() {
+          wrap.style.opacity = '0';
+          wrap.style.transform = 'scale(0.95)';
+          wrap.style.transition = 'all 0.18s ease';
+          setTimeout(() => wrap.remove(), 190);
+        }
+      };
+    }
+
+    function postMessageWithProgress(bodyObj, onProgress) {
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/messages', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable && onProgress) {
+            onProgress(e.loaded / e.total);
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try { resolve(JSON.parse(xhr.responseText)); } catch { resolve({ success: true }); }
+          } else {
+            reject(new Error('Upload failed'));
+          }
+        };
+
+        xhr.onerror = () => reject(new Error('Network error'));
+        xhr.onabort = () => reject(new DOMException('Aborted', 'AbortError'));
+        xhr.send(JSON.stringify(bodyObj));
+
+        if (onProgress) onProgress(0, xhr);
+      });
+    }
+
     // Full-Screen Photo & Video Lightbox
     function openMediaLightbox(srcUrl, mediaType, fileName) {
       const modal = document.getElementById('mediaLightboxModal');
@@ -772,7 +970,7 @@
       closeModal('mediaLightboxModal');
     }
 
-    // Draggable Self-View PiP (Phone Touch + Laptop Mouse)
+    // Draggable Self-View PiP
     (function initDraggablePip() {
       const pip = document.getElementById('localVideoPip');
       if (!pip) return;
@@ -1061,14 +1259,33 @@
       showToast('Deletion request cancelled.', 'info'); await syncDashboard();
     }
 
-    // Steganography
+    // Steganography with Circular Upload Progress + Cancel
     function openStegoModal() { if (!activeChat) return; document.getElementById('stegoCoverFile').value = ''; document.getElementById('stegoSecretText').value = ''; document.getElementById('stegoModal').classList.remove('hidden'); }
     async function sendStegoImage() {
       const file = document.getElementById('stegoCoverFile').files[0], secretText = document.getElementById('stegoSecretText').value.trim();
       if (!file) return showToast('Ek cover photo select karein.', 'warning');
       if (!secretText) return showToast('Secret message likhein.', 'warning');
-      const btn = document.getElementById('sendStegoBtn'); btn.disabled = true; btn.textContent = 'Embedding...';
+      closeModal('stegoModal');
+
+      let aborted = false, activeXhr = null;
+      const previewUrl = URL.createObjectURL(file);
+      const outName = file.name.replace(/\.[^.]+$/, '') + '.png';
+      const card = createCircularUploadCard({
+        fileName: outName,
+        fileSize: file.size,
+        msgType: 'stego',
+        previewUrl,
+        onCancel: () => {
+          aborted = true;
+          if (activeXhr) activeXhr.abort();
+          URL.revokeObjectURL(previewUrl);
+          card.remove();
+          showToast('Stego upload cancelled', 'info');
+        }
+      });
+
       try {
+        card.update(15, 'Embedding secret...');
         const aesKey = await getActiveChatAesKey();
         const encSecret = await encryptWithAesKey(secretText, aesKey);
         const secretPayloadBytes = new TextEncoder().encode(JSON.stringify({ c: encSecret.ciphertext, i: encSecret.iv }));
@@ -1076,9 +1293,11 @@
         totalBytes.set([0x53, 0x54, 0x45, 0x47], 0);
         new DataView(totalBytes.buffer).setUint32(4, secretPayloadBytes.length, false);
         totalBytes.set(secretPayloadBytes, 8);
-        const imgUrl = URL.createObjectURL(file), img = new Image();
-        await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = imgUrl; });
-        URL.revokeObjectURL(imgUrl);
+
+        const img = new Image();
+        await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = previewUrl; });
+        if (aborted) return;
+
         const neededPixels = Math.ceil((totalBytes.length * 8) / 3) + 16;
         let w = img.width, h = img.height;
         if (w * h < neededPixels) { const s = Math.ceil(Math.sqrt(neededPixels / (w * h))); w *= s; h *= s; }
@@ -1092,10 +1311,33 @@
           data[dataIdx] = (data[dataIdx] & 0xFE) | bit; data[pixelIdx * 4 + 3] = 255;
         }
         ctx.putImageData(imgData, 0, 0);
-        await sendEncryptedPayload(canvas.toDataURL('image/png'), 'stego', file.name.replace(/\.[^.]+$/, '') + '.png', false);
-        closeModal('stegoModal'); showToast('Steganography secret photo sent!', 'success');
-      } catch (err) { showToast('Stego error: ' + err.message, 'error'); } finally { btn.disabled = false; btn.textContent = 'Embed Secret & Send Photo'; }
+        const stegoDataUrl = canvas.toDataURL('image/png');
+        if (aborted) return;
+
+        card.update(35, 'Encrypting...');
+        const useSealed = activeChat.type === 'user' && !activeChat.data.isSelf && sealedSenderEnabled;
+        const encrypted = await encryptWithAesKey(useSealed ? JSON.stringify({ __sealed: true, senderName: currentUser.name, senderUsername: currentUser.username, body: stegoDataUrl }) : stegoDataUrl, aesKey);
+        if (aborted) return;
+        if (useSealed) recordSentSealedIv(encrypted.iv);
+
+        const body = { senderId: currentUser.id, receiverId: activeChat.type === 'user' ? activeChat.data.id : 0, groupId: activeChat.type === 'group' ? activeChat.data.id : null, msgType: 'stego', ciphertext: encrypted.ciphertext, iv: encrypted.iv, fileName: outName, replyToId: replyTarget ? replyTarget.id : null, isViewOnce: false, isSealed: useSealed, ttlMs: Number(document.getElementById('ttlSelect').value || 0) };
+        cancelReply();
+
+        await postMessageWithProgress(body, (ratio, xhrInstance) => {
+          if (xhrInstance) activeXhr = xhrInstance;
+          card.update(35 + ratio * 65, 'Uploading...');
+        });
+        card.update(100, 'Sent!');
+        URL.revokeObjectURL(previewUrl);
+        card.remove();
+        await loadMessages();
+      } catch (err) {
+        URL.revokeObjectURL(previewUrl);
+        card.remove();
+        if (!aborted && err?.name !== 'AbortError') showToast('Stego error: ' + err.message, 'error');
+      }
     }
+
     async function revealStegoSecret(pngDataUrl, targetDivId) {
       const targetEl = document.getElementById(targetDivId);
       try {
@@ -1262,7 +1504,7 @@
       document.getElementById('currentUserName').textContent = currentUser.name;
       document.getElementById('currentUserMeta').textContent = `@${currentUser.username} • ${currentUser.phone}`;
       const av = document.getElementById('myAvatar'); av.textContent = getInitials(currentUser.name);
-      av.className = `w-10 h-10 rounded-2xl bg-gradient-to-br ${getAvatarGradient(currentUser.username)} flex items-center justify-center text-slate-950 font-extrabold text-sm shrink-0 shadow-md`;
+      av.className = `w-10 h-10 rounded-2xl bg-gradient-to-br ${getAvatarGradient(currentUser.username)} flex items-center justify-center text-slate-950 font-extrabold text-sm shrink-0 shadow-md group-hover:scale-105 transition`;
     }
     async function logout() {
       clearInterval(pollTimer); clearInterval(idleCheckTimer);
@@ -1275,7 +1517,7 @@
     // Sidebar & Dashboard Sync
     function setSidebarFilter(mode) {
       sidebarFilter = mode;
-      const a = 'px-2.5 py-1 rounded-lg font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30', n = 'px-2.5 py-1 rounded-lg font-semibold bg-white/5 text-slate-400 hover:text-white';
+      const a = 'px-2.5 py-1 rounded-lg font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition', n = 'px-2.5 py-1 rounded-lg font-semibold bg-white/5 text-slate-400 hover:text-white transition';
       document.getElementById('filterAllBtn').className = mode === 'all' ? a : n;
       document.getElementById('filterUnreadBtn').className = mode === 'unread' ? a : n;
       document.getElementById('filterGroupsBtn').className = mode === 'groups' ? a : n;
@@ -1454,12 +1696,12 @@
     async function unfriendCurrent() {
       if (activeChat?.type !== 'user' || activeChat.data.isSelf || !confirm(`Unfriend ${activeChat.data.name}?`)) return;
       await fetch('/api/friends/unfriend', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: currentUser.id, targetId: activeChat.data.id }) });
-      closeMobileChat(); document.getElementById('composerBar').classList.add('hidden'); document.getElementById('chatControls').classList.add('hidden'); document.getElementById('activePeerAvatar').classList.add('hidden'); document.getElementById('messagesBox').innerHTML = ''; await syncDashboard();
+      closeMobileChat(); document.getElementById('composerBar').classList.add('hidden'); document.getElementById('chatControls').classList.add('hidden'); document.getElementById('activePeerAvatar').classList.add('hidden'); document.getElementById('messagesListContainer').innerHTML = ''; await syncDashboard();
     }
     async function blockCurrent() {
       if (activeChat?.type !== 'user' || activeChat.data.isSelf || !confirm(`Block ${activeChat.data.name}?`)) return;
       await fetch('/api/friends/block', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: currentUser.id, targetId: activeChat.data.id }) });
-      closeMobileChat(); document.getElementById('composerBar').classList.add('hidden'); document.getElementById('chatControls').classList.add('hidden'); document.getElementById('activePeerAvatar').classList.add('hidden'); document.getElementById('messagesBox').innerHTML = ''; await syncDashboard();
+      closeMobileChat(); document.getElementById('composerBar').classList.add('hidden'); document.getElementById('chatControls').classList.add('hidden'); document.getElementById('activePeerAvatar').classList.add('hidden'); document.getElementById('messagesListContainer').innerHTML = ''; await syncDashboard();
     }
 
     // Full-Screen WebRTC Calls
@@ -1575,12 +1817,12 @@
       closeModal('activeCallModal');
     }
 
-    // Chat Selection & Anti-Blink Render
+    // Chat Selection, Media Upload with Cancel, & Anti-Blink Render
     async function selectUserChat(friend) {
       activeChat = { type: 'user', data: friend }; lastKnownMsgId = 0; lastRenderSignature = ''; highestRenderedMsgId = 0;
       document.getElementById('chatSearchInput').value = ''; cancelReply(); showMobileChatView();
       const av = document.getElementById('activePeerAvatar'); av.classList.remove('hidden'); av.textContent = friend.isSelf ? '📌' : getInitials(friend.name);
-      av.className = `w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br ${friend.isSelf ? 'from-amber-400 to-orange-500' : getAvatarGradient(friend.username)} flex items-center justify-center text-slate-950 font-extrabold text-xs shrink-0 cursor-pointer`;
+      av.className = `w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br ${friend.isSelf ? 'from-amber-400 to-orange-500' : getAvatarGradient(friend.username)} flex items-center justify-center text-slate-950 font-extrabold text-xs shrink-0 cursor-pointer hover:scale-105 transition`;
       document.getElementById('peerName').textContent = `${friend.name} (@${friend.username})`;
       document.getElementById('peerSubtitle').textContent = friend.isSelf ? 'Personal Encrypted Vault' : `${friend.is_online ? '🟢 Online' : '⚪ Offline'} • ${friend.bio || friend.phone}`;
       document.getElementById('chatControls').classList.remove('hidden'); document.getElementById('callButtonsWrap').classList.toggle('hidden', Boolean(friend.isSelf));
@@ -1591,7 +1833,7 @@
       activeChat = { type: 'group', data: group }; lastKnownMsgId = 0; lastRenderSignature = ''; highestRenderedMsgId = 0;
       document.getElementById('chatSearchInput').value = ''; cancelReply(); showMobileChatView();
       const av = document.getElementById('activePeerAvatar'); av.classList.remove('hidden'); av.textContent = '#';
-      av.className = 'w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-indigo-400 to-purple-600 flex items-center justify-center text-white font-extrabold text-sm shrink-0 cursor-pointer';
+      av.className = 'w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-indigo-400 to-purple-600 flex items-center justify-center text-white font-extrabold text-sm shrink-0 cursor-pointer hover:scale-105 transition';
       document.getElementById('peerName').textContent = group.name; document.getElementById('peerSubtitle').textContent = `${group.member_count} Members • E2EE Group`;
       document.getElementById('chatControls').classList.remove('hidden'); document.getElementById('callButtonsWrap').classList.add('hidden');
       document.getElementById('menuSealedRow').classList.add('hidden'); document.getElementById('composerBar').classList.remove('hidden');
@@ -1645,17 +1887,93 @@
       await sendEncryptedPayload(JSON.stringify({ question, options }), 'poll'); closeModal('pollModal');
     }
     async function voteOnPoll(messageId, optionIndex) { await fetch('/api/messages/vote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messageId, userId: currentUser.id, optionIndex }) }); await loadMessages(); }
+
+    // Upload Photo, Video or Document with Live Circular Progress + Cancel (✕)
     function handleMediaUpload(event) {
-      const file = event.target.files[0]; if (!file || !activeChat) return;
+      const file = event.target.files[0];
+      event.target.value = '';
+      if (!file || !activeChat) return;
       if (file.size > 20 * 1024 * 1024) return showToast('20MB se chhoti file select karein.', 'warning');
+
+      const msgType = file.type.startsWith('image/') ? 'image' : (file.type.startsWith('video/') ? 'video' : 'file');
+      const allowViewOnce = viewOnceEnabled && (msgType === 'image' || msgType === 'video');
+      const previewUrl = msgType === 'image' ? URL.createObjectURL(file) : null;
+
+      let aborted = false;
+      let activeXhr = null;
       const reader = new FileReader();
-      reader.onload = async () => {
-        const msgType = file.type.startsWith('image/') ? 'image' : (file.type.startsWith('video/') ? 'video' : 'file');
-        await sendEncryptedPayload(reader.result, msgType, file.name, viewOnceEnabled && (msgType === 'image' || msgType === 'video'));
-        event.target.value = '';
+
+      const card = createCircularUploadCard({
+        fileName: file.name,
+        fileSize: file.size,
+        msgType,
+        previewUrl,
+        onCancel: () => {
+          aborted = true;
+          try { reader.abort(); } catch {}
+          if (activeXhr) activeXhr.abort();
+          if (previewUrl) URL.revokeObjectURL(previewUrl);
+          card.remove();
+          showToast('Upload cancelled', 'info');
+        }
+      });
+
+      reader.onprogress = (e) => {
+        if (e.lengthComputable && !aborted) {
+          card.update((e.loaded / e.total) * 20, 'Reading file...');
+        }
       };
+
+      reader.onload = async () => {
+        if (aborted) return;
+        try {
+          card.update(25, 'Encrypting AES-256...');
+          const aesKey = await getActiveChatAesKey();
+          const useSealed = activeChat.type === 'user' && !activeChat.data.isSelf && sealedSenderEnabled;
+          const payloadToEncrypt = useSealed
+            ? JSON.stringify({ __sealed: true, senderName: currentUser.name, senderUsername: currentUser.username, body: reader.result })
+            : reader.result;
+
+          const encrypted = await encryptWithAesKey(payloadToEncrypt, aesKey);
+          if (aborted) return;
+          if (useSealed) recordSentSealedIv(encrypted.iv);
+
+          const body = {
+            senderId: currentUser.id,
+            receiverId: activeChat.type === 'user' ? activeChat.data.id : 0,
+            groupId: activeChat.type === 'group' ? activeChat.data.id : null,
+            msgType,
+            ciphertext: encrypted.ciphertext,
+            iv: encrypted.iv,
+            fileName: file.name,
+            replyToId: replyTarget ? replyTarget.id : null,
+            isViewOnce: allowViewOnce,
+            isSealed: useSealed,
+            ttlMs: Number(document.getElementById('ttlSelect').value || 0)
+          };
+
+          cancelReply();
+          if (allowViewOnce && viewOnceEnabled) toggleViewOnce();
+
+          await postMessageWithProgress(body, (ratio, xhrInstance) => {
+            if (xhrInstance) activeXhr = xhrInstance;
+            card.update(30 + ratio * 70, 'Uploading...');
+          });
+
+          card.update(100, 'Sent!');
+          if (previewUrl) URL.revokeObjectURL(previewUrl);
+          card.remove();
+          await loadMessages();
+        } catch (err) {
+          if (previewUrl) URL.revokeObjectURL(previewUrl);
+          card.remove();
+          if (!aborted && err?.name !== 'AbortError') showToast('Upload failed: ' + err.message, 'error');
+        }
+      };
+
       reader.readAsDataURL(file);
     }
+
     async function toggleVoiceRecording() {
       const btn = document.getElementById('voiceBtn'), timerLbl = document.getElementById('voiceTimerLabel');
       if (mediaRecorder && mediaRecorder.state === 'recording') {
@@ -1668,14 +1986,50 @@
         mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
         mediaRecorder.onstop = () => {
           stream.getTracks().forEach(t => t.stop());
-          const reader = new FileReader(); reader.onload = async () => await sendEncryptedPayload(reader.result, 'audio', 'voice-note.webm', false);
-          reader.readAsDataURL(new Blob(audioChunks, { type: 'audio/webm' }));
+          const blob = new Blob(audioChunks, { type: 'audio/webm' });
+          let aborted = false, activeXhr = null;
+          const reader = new FileReader();
+          const card = createCircularUploadCard({
+            fileName: 'Voice Note',
+            fileSize: blob.size,
+            msgType: 'audio',
+            onCancel: () => {
+              aborted = true;
+              try { reader.abort(); } catch {}
+              if (activeXhr) activeXhr.abort();
+              card.remove();
+              showToast('Voice note cancelled', 'info');
+            }
+          });
+          reader.onload = async () => {
+            if (aborted) return;
+            try {
+              card.update(30, 'Encrypting...');
+              const aesKey = await getActiveChatAesKey();
+              const useSealed = activeChat.type === 'user' && !activeChat.data.isSelf && sealedSenderEnabled;
+              const encrypted = await encryptWithAesKey(useSealed ? JSON.stringify({ __sealed: true, senderName: currentUser.name, senderUsername: currentUser.username, body: reader.result }) : reader.result, aesKey);
+              if (aborted) return;
+              if (useSealed) recordSentSealedIv(encrypted.iv);
+              const body = { senderId: currentUser.id, receiverId: activeChat.type === 'user' ? activeChat.data.id : 0, groupId: activeChat.type === 'group' ? activeChat.data.id : null, msgType: 'audio', ciphertext: encrypted.ciphertext, iv: encrypted.iv, fileName: 'voice-note.webm', replyToId: replyTarget ? replyTarget.id : null, isViewOnce: false, isSealed: useSealed, ttlMs: Number(document.getElementById('ttlSelect').value || 0) };
+              cancelReply();
+              await postMessageWithProgress(body, (ratio, xhrInstance) => {
+                if (xhrInstance) activeXhr = xhrInstance;
+                card.update(30 + ratio * 70, 'Uploading...');
+              });
+              card.remove();
+              await loadMessages();
+            } catch {
+              card.remove();
+            }
+          };
+          reader.readAsDataURL(blob);
         };
         mediaRecorder.start(); voiceSeconds = 0; timerLbl.textContent = '0:00'; timerLbl.classList.remove('hidden');
         voiceTimerInterval = setInterval(() => { voiceSeconds++; timerLbl.textContent = `${Math.floor(voiceSeconds / 60)}:${String(voiceSeconds % 60).padStart(2, '0')}`; }, 1000);
         btn.className = 'px-2.5 sm:px-3 h-9 rounded-xl bg-rose-600 text-xs font-bold text-white flex items-center gap-1.5 animate-pulse shrink-0';
       } catch { showToast('Microphone permission denied.', 'error'); }
     }
+
     async function openViewOnceMedia(msg) {
       try {
         let rawDecrypted = await decryptWithAesKey(msg.ciphertext, msg.iv, await getActiveChatAesKey());
@@ -1696,8 +2050,12 @@
       if (!res.ok) return;
       const { messages, typingUser } = await res.json();
       const typingEl = document.getElementById('typingBadge');
-      if (typingUser) { typingEl.classList.remove('hidden'); typingEl.textContent = activeChat.type === 'group' ? `${typingUser} is typing...` : 'typing...'; }
-      else typingEl.classList.add('hidden');
+      if (typingUser) {
+        typingEl.classList.remove('hidden');
+        document.getElementById('typingLabelText').textContent = activeChat.type === 'group' ? `${typingUser} typing` : 'typing';
+      } else {
+        typingEl.classList.add('hidden');
+      }
       if (messages.length > 0) {
         const newest = messages[messages.length - 1];
         const newestIsMine = Number(newest.sender_id) === Number(currentUser.id) || (newest.is_sealed && isMySealedIv(newest.iv));
@@ -1711,6 +2069,7 @@
     async function renderMessages(force = false) {
       if (!activeChat) return;
       const box = document.getElementById('messagesBox');
+      const listContainer = document.getElementById('messagesListContainer');
       const xray = document.getElementById('xrayToggle').checked;
       const searchFilter = document.getElementById('chatSearchInput').value.trim().toLowerCase();
 
@@ -1724,7 +2083,7 @@
       const frag = document.createDocumentFragment();
 
       if (cachedMessages.length === 0) {
-        box.innerHTML = `<div class="h-full flex items-center justify-center"><div class="glass-panel rounded-3xl p-6 text-center max-w-xs"><div class="text-2xl mb-2">🔐</div><div class="text-xs font-bold text-white mb-1">End-to-End Encrypted Channel</div><div class="text-[11px] text-slate-400">Sirf aap aur aapke friend hi is chat ko padh sakte hain.</div></div></div>`;
+        listContainer.innerHTML = `<div class="h-full min-h-[55vh] flex items-center justify-center"><div class="glass-panel rounded-3xl p-6 text-center max-w-xs modal-card"><div class="text-2xl mb-2">🔐</div><div class="text-xs font-bold text-white mb-1">End-to-End Encrypted Channel</div><div class="text-[11px] text-slate-400">Sirf aap aur aapke friend hi is chat ko padh sakte hain.</div></div></div>`;
         return;
       }
 
@@ -1789,7 +2148,7 @@
                 const voters = votesMap[String(idx)] || [], pct = totalVotes > 0 ? Math.round((voters.length / totalVotes) * 100) : 0, iVoted = voters.includes(Number(currentUser.id));
                 const optBtn = document.createElement('button');
                 optBtn.className = `w-full text-left p-2.5 rounded-xl border text-xs relative overflow-hidden transition ${iVoted ? (isMine ? 'border-slate-950 bg-black/20 font-bold' : 'border-emerald-400 bg-emerald-500/20 font-bold') : 'border-white/15 bg-black/15 hover:bg-black/25'}`;
-                optBtn.innerHTML = `<div style="width:${pct}%" class="absolute inset-y-0 left-0 ${isMine ? 'bg-black/15' : 'bg-emerald-500/20'}"></div><div class="relative z-10 flex justify-between items-center gap-2"><span>${iVoted ? '✓ ' : ''}${escapeHtml(optText)}</span><span class="font-mono text-[10px] opacity-85">${voters.length} (${pct}%)</span></div>`;
+                optBtn.innerHTML = `<div style="width:${pct}%" class="absolute inset-y-0 left-0 ${isMine ? 'bg-black/15' : 'bg-emerald-500/20'} transition-all duration-300"></div><div class="relative z-10 flex justify-between items-center gap-2"><span>${iVoted ? '✓ ' : ''}${escapeHtml(optText)}</span><span class="font-mono text-[10px] opacity-85">${voters.length} (${pct}%)</span></div>`;
                 optBtn.onclick = () => voteOnPoll(m.id, idx); pollBox.appendChild(optBtn);
               });
               renderHtmlOrNode = pollBox;
@@ -1819,7 +2178,8 @@
         decryptedTextMap[m.id] = decryptedContent;
         if (searchFilter && !decryptedContent.toLowerCase().includes(searchFilter)) continue;
 
-        const wrap = document.createElement('div'); wrap.className = `flex flex-col ${isMine ? 'items-end' : 'items-start'} group ${isBrandNewMsg ? 'msg-animate' : ''}`;
+        const animClass = isBrandNewMsg ? (isMine ? 'msg-anim-mine' : 'msg-anim-peer') : '';
+        const wrap = document.createElement('div'); wrap.className = `flex flex-col ${isMine ? 'items-end' : 'items-start'} group ${animClass}`;
         const bubble = document.createElement('div');
         bubble.className = `max-w-[85%] sm:max-w-md px-4 py-2.5 text-sm shadow-lg relative ${isMine ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-slate-950 font-medium rounded-2xl rounded-tr-sm' : 'glass-panel text-slate-100 rounded-2xl rounded-tl-sm'}`;
 
@@ -1842,7 +2202,7 @@
         if (Object.keys(reactions).length > 0) {
           const rBar = document.createElement('div'); rBar.className = 'flex gap-1 mt-1';
           Object.keys(reactions).forEach(em => {
-            const pill = document.createElement('button'); pill.className = 'text-[11px] glass-panel px-2 py-0.5 rounded-full';
+            const pill = document.createElement('button'); pill.className = 'text-[11px] glass-panel px-2 py-0.5 rounded-full hover:scale-110 transition';
             pill.textContent = `${em} ${reactions[em].length}`; pill.onclick = () => reactToMessage(m.id, em); rBar.appendChild(pill);
           });
           wrap.appendChild(rBar);
@@ -1855,8 +2215,8 @@
             <button onclick="setReply(${m.id}, '${escapeHtml(effectiveSenderName)}')" class="hover:text-emerald-400 font-semibold px-1">↩ Reply</button>
             ${!m.is_view_once && m.msg_type !== 'poll' ? `<button onclick="openForwardModal(${m.id})" class="hover:text-sky-400 font-semibold px-1">↪ Forward</button>` : ''}
             ${isMine && m.msg_type === 'text' ? `<button onclick="editTextMessage(${m.id}, ${Boolean(m.is_sealed)})" class="hover:text-amber-300 font-medium px-1">Edit</button>` : ''}
-            <button onclick="reactToMessage(${m.id}, '❤️')">❤️</button>
-            <button onclick="reactToMessage(${m.id}, '👍')">👍</button>
+            <button onclick="reactToMessage(${m.id}, '❤️')" class="hover:scale-125 transition">❤️</button>
+            <button onclick="reactToMessage(${m.id}, '👍')" class="hover:scale-125 transition">👍</button>
             ${isMine ? `<button onclick="deleteMessage(${m.id})" class="text-rose-400 hover:underline px-1 font-medium">Delete</button>` : ''}
           `;
           wrap.appendChild(actions);
@@ -1865,7 +2225,7 @@
       }
 
       highestRenderedMsgId = maxIdInBatch;
-      box.innerHTML = ''; box.appendChild(frag);
+      listContainer.innerHTML = ''; listContainer.appendChild(frag);
       if (prevScrollBottom) box.scrollTop = box.scrollHeight;
     }
 
